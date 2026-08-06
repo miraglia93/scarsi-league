@@ -27,7 +27,9 @@ export default function Admin() {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setStato("no-login"); return; }
-      const { data: me } = await supabase.from("membri_autorizzati").select("ruolo").maybeSingle();
+      const mail = (session.user?.email || "").toLowerCase();
+      const { data: me } = await supabase.from("membri_autorizzati")
+        .select("ruolo").eq("email", mail).maybeSingle();
       if (me?.ruolo !== "admin") { setStato("no-admin"); return; }
       setStato("ok");
       carica();
