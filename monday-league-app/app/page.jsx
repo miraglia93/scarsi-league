@@ -18,7 +18,7 @@ const fmtData = (iso) => {
 /* ---------- assemblaggio dati dal DB ---------- */
 function assemble(partite, giocatori, prestazioni, votiRaw) {
   const P = {};
-  giocatori.forEach((g) => { P[g.id] = { id: g.id, nome: g.nome, ruolo: g.ruolo_prevalente || "CEN" }; });
+  giocatori.forEach((g) => { P[g.id] = { id: g.id, nome: g.nome, nick: g.nickname, foto: g.foto_url, numero: g.numero_maglia, ruolo: g.ruolo_prevalente || "CEN" }; });
 
   const prByMatch = {};
   prestazioni.forEach((pr) => {
@@ -191,10 +191,12 @@ function PlayerCard({ s, size = "lg", onClick }) {
       <div className="fut-top">
         <div className="fut-ov">{s.overall}</div>
         <div className="fut-pos">{s.ruolo}</div>
-        <div className="fut-num">{s.presenze} pres.</div>
+        <div className="fut-num">{s.numero ? `#${s.numero}` : `${s.presenze} pres.`}</div>
       </div>
-      <div className="fut-avatar">{s.nome.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}</div>
-      <div className="fut-name">{s.nome}</div>
+      {s.foto
+        ? <img className="fut-foto" src={s.foto} alt={s.nome} />
+        : <div className="fut-avatar">{s.nome.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}</div>}
+      <div className="fut-name" title={s.nome}>{s.nick || s.nome}</div>
       {size === "lg" && (
         <div className="fut-stats">
           {cardStats(s).map(([k, v]) => <div key={k}><b>{v}</b><span>{k}</span></div>)}
@@ -240,6 +242,15 @@ function Login() {
     if (error) setErr(error.message); else setSent(true);
   };
 
+  const google = async () => {
+    setErr("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
+    });
+    if (error) setErr("Accesso Google non disponibile: " + error.message);
+  };
+
   return (
     <div className="login">
       <h1>Scarsi <em>League</em></h1>
@@ -248,11 +259,14 @@ function Login() {
         <p className="msg">✉️ Fatto! Controlla la tua email e clicca il link di accesso.</p>
       ) : (
         <>
+          <button className="gbtn" onClick={google}>Continua con Google</button>
+          <div className="divider"><span>oppure</span></div>
           <input type="email" placeholder="la-tua-email@esempio.it" value={email}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && email && send()} />
           <button onClick={send} disabled={busy || !email}>{busy ? "Invio…" : "Inviami il link di accesso"}</button>
           {err && <p className="msg">⚠ {err}</p>}
+          <p className="msg">Continuando accetti la <a className="plink" href="/privacy">Privacy Policy</a> della lega.</p>
         </>
       )}
     </div>
@@ -311,11 +325,53 @@ function RichiediAccesso({ email }) {
   );
 }
 
+const VERSIONE_PRIVACY = "2026-08";
+
+function Consenso({ email, onAccettato }) {
+  const [ok, setOk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const accetta = async () => {
+    setBusy(true); setErr("");
+    const { error } = await supabase.from("consensi").insert({
+      email: (email || "").toLowerCase(),
+      versione: VERSIONE_PRIVACY,
+    });
+    setBusy(false);
+    if (error) setErr(error.message); else onAccettato();
+  };
+
+  return (
+    <div className="login">
+      <h1>Scarsi <em>League</em></h1>
+      <p className="season">Prima di entrare</p>
+      <p className="msg">
+        Scarsi League raccoglie statistiche della lega (nomi, risultati, voti delle
+        pagelle) importate da Fubles, visibili solo ai membri approvati.
+        I dettagli su cosa raccogliamo, perché, e come chiedere la rimozione
+        sono nella <a className="plink" href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.
+      </p>
+      <label className="check">
+        <input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} />
+        <span>Ho letto e accetto la Privacy Policy (v. {VERSIONE_PRIVACY})</span>
+      </label>
+      <button onClick={accetta} disabled={!ok || busy}>{busy ? "Un attimo…" : "Accetto ed entro"}</button>
+      {err && <p className="msg">⚠ {err}</p>}
+      <p className="msg"><a className="plink" href="#" onClick={(e) => { e.preventDefault(); supabase.auth.signOut(); }}>Non accetto, esci</a></p>
+    </div>
+  );
+}
+
 /* ---------- pagina principale ---------- */
 export default function Home() {
   const [session, setSession] = useState(undefined); // undefined = loading
+  const [consenso, setConsenso] = useState(null); // null = verifica, false = da accettare
   const [autorizzato, setAutorizzato] = useState(null); // null = verifica in corso
-  const [data, setData] = useState(null);
+  const [ruoloUtente, setRuoloUtente] = useState("membro");
+  const [leghe, setLeghe] = useState([]);
+  const [legaId, setLegaId] = useState(null);
+  const [raw, setRaw] = useState(null);
   const [errore, setErrore] = useState("");
   const [view, setView] = useState("home");
   const [sel, setSel] = useState(null);
@@ -330,34 +386,71 @@ export default function Home() {
   useEffect(() => {
     if (!session) return;
     (async () => {
-      // verifica whitelist: la RLS mostra solo la propria riga
+      // 1) consenso privacy registrato?
+      const { data: c } = await supabase.from("consensi").select("email").maybeSingle();
+      if (!c) { setConsenso(false); return; }
+      setConsenso(true);
+      // 2) verifica whitelist: la RLS mostra solo la propria riga
       const { data: me } = await supabase
         .from("membri_autorizzati")
-        .select("email")
+        .select("email, ruolo")
         .maybeSingle();
       if (!me) { setAutorizzato(false); return; }
       setAutorizzato(true);
-      const [pa, gi, pr, vo] = await Promise.all([
+      setRuoloUtente(me.ruolo || "membro");
+      const [pa, gi, pr, vo, le] = await Promise.all([
         supabase.from("partite").select("*"),
         supabase.from("giocatori").select("*"),
         supabase.from("prestazioni").select("*"),
         supabase.from("voti_ricevuti").select("*"),
+        supabase.from("leghe").select("*").order("id"),
       ]);
       const err = pa.error || gi.error || pr.error || vo.error;
       if (err) { setErrore(err.message); return; }
-      setData(assemble(pa.data, gi.data, pr.data, vo.data));
+      setLeghe(le.data || []);
+      setLegaId((le.data || [])[0]?.id ?? null);
+      setRaw({ pa: pa.data, gi: gi.data, pr: pr.data, vo: vo.data });
     })();
   }, [session]);
 
-  const S = useMemo(() => (data ? buildStats(data.P, data.matches) : null), [data]);
+  const data = useMemo(() => {
+    if (!raw || legaId == null) return null;
+    const gi = raw.gi.filter((g) => g.lega_id === legaId);
+    const ids = new Set(gi.map((g) => g.id));
+    const pa = raw.pa.filter((p) => p.lega_id === legaId);
+    const paIds = new Set(pa.map((p) => p.id));
+    const pr = raw.pr.filter((p) => paIds.has(p.partita_id));
+    const vo = raw.vo.filter((v) => paIds.has(v.partita_id));
+    if (!pa.length) return { P: {}, matches: [], votes: [], vuota: true };
+    return assemble(pa, gi, pr, vo);
+  }, [raw, legaId]);
+  const S = useMemo(() => (data && !data.vuota ? buildStats(data.P, data.matches) : null), [data]);
   const rel = useMemo(() => (data ? pairAndNemesis(data.matches) : null), [data]);
 
   if (session === undefined) return <div className="centered">Caricamento…</div>;
   if (!session) return <Login />;
+  if (consenso === false) {
+    return <Consenso email={session.user?.email} onAccettato={() => { setConsenso(true); window.location.reload(); }} />;
+  }
   if (autorizzato === false) {
     return <RichiediAccesso email={session.user?.email} />;
   }
   if (errore) return <div className="centered">Errore dati: {errore}</div>;
+  if (data?.vuota) return (
+    <div className="wrap">
+      <div className="brand"><h1>Scarsi <em>League</em></h1></div>
+      <nav>
+        {leghe.length > 1 && (
+          <select className="legasel" value={legaId ?? ""} onChange={(e) => setLegaId(Number(e.target.value))}>
+            {leghe.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
+          </select>
+        )}
+        <a className="navlink" href="/profilo">Profilo</a>
+        {ruoloUtente === "admin" && <a className="navlink" href="/admin">Admin</a>}
+      </nav>
+      <p className="centered">Questa lega non ha ancora partite importate ⚽</p>
+    </div>
+  );
   if (!data || !S) return <div className="centered">Carico le partite…</div>;
 
   const { matches: MATCHES, votes: VOTES } = data;
@@ -412,6 +505,13 @@ export default function Home() {
         {[["home", "Home"], ["classifiche", "Classifiche"], ["giocatori", "Giocatori"], ["record", "Record"]].map(([k, l]) => (
           <button key={k} className={view === k && sel == null ? "on" : ""} onClick={() => { setView(k); setSel(null); }}>{l}</button>
         ))}
+        {leghe.length > 1 && (
+          <select className="legasel" value={legaId ?? ""} onChange={(e) => setLegaId(Number(e.target.value))}>
+            {leghe.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
+          </select>
+        )}
+        <a className="navlink" href="/profilo">Profilo</a>
+        {ruoloUtente === "admin" && <a className="navlink" href="/admin">Admin</a>}
         <button className="logout" onClick={() => supabase.auth.signOut()}>Esci</button>
       </nav>
 
