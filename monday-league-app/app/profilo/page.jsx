@@ -17,7 +17,10 @@ export default function Profilo() {
   const [busy, setBusy] = useState(false);
 
   const carica = async () => {
-    const { data: m } = await supabase.from("membri_autorizzati").select("*").maybeSingle();
+    const { data: { user } } = await supabase.auth.getUser();
+    const mail = (user?.email || "").toLowerCase();
+    const { data: m } = await supabase.from("membri_autorizzati")
+      .select("*").eq("email", mail).maybeSingle();
     if (!m) { setStato("no-membro"); return; }
     setMe(m);
     const [{ data: g }, { data: c }] = await Promise.all([
