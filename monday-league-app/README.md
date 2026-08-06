@@ -1,4 +1,6 @@
-# Monday League ⚽
+# Scarsi League ⚽
+
+> La lega dove siamo tutti scarsi, ma qualcuno lo è meno.
 
 Dashboard della lega di calciotto del lunedì — dati importati da Fubles via Claude in Chrome,
 database Supabase, frontend Next.js.

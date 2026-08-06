@@ -242,7 +242,7 @@ function Login() {
 
   return (
     <div className="login">
-      <h1>Monday <em>League</em></h1>
+      <h1>Scarsi <em>League</em></h1>
       <p className="season">Accesso riservato ai membri della lega</p>
       {sent ? (
         <p className="msg">✉️ Fatto! Controlla la tua email e clicca il link di accesso.</p>
@@ -259,9 +259,62 @@ function Login() {
   );
 }
 
+function RichiediAccesso({ email }) {
+  const [nome, setNome] = useState("");
+  const [messaggio, setMessaggio] = useState("");
+  const [stato, setStato] = useState(null); // null=verifica, 'nuova', 'inviata', 'errore'
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    supabase.from("richieste_accesso").select("stato").maybeSingle()
+      .then(({ data }) => setStato(data ? "inviata" : "nuova"));
+  }, []);
+
+  const invia = async () => {
+    const { error } = await supabase.from("richieste_accesso").insert({
+      email: (email || "").toLowerCase(), nome, messaggio,
+    });
+    if (error) { setErr(error.message); setStato("errore"); }
+    else setStato("inviata");
+  };
+
+  return (
+    <div className="login">
+      <h1>Scarsi <em>League</em></h1>
+      {stato === "inviata" ? (
+        <>
+          <p className="season">Richiesta inviata ✅</p>
+          <p className="msg">
+            Alessandro deve approvarti — di solito lo fa prima del fischio d&apos;inizio.
+            Riapri il sito dopo l&apos;ok e sei dentro.
+          </p>
+          <button onClick={() => supabase.auth.signOut()}>Esci</button>
+        </>
+      ) : stato === "nuova" || stato === "errore" ? (
+        <>
+          <p className="season">Un ultimo passo</p>
+          <p className="msg">
+            L&apos;email <b>{email}</b> non è ancora tra i membri.
+            Se giochi con noi, richiedi l&apos;accesso:
+          </p>
+          <input placeholder="Il tuo nome (come su Fubles)" value={nome}
+            onChange={(e) => setNome(e.target.value)} />
+          <input placeholder="Messaggio (opzionale) — es. gioco in porta" value={messaggio}
+            onChange={(e) => setMessaggio(e.target.value)} />
+          <button onClick={invia} disabled={!nome}>Richiedi accesso</button>
+          {err && <p className="msg">⚠ {err}</p>}
+        </>
+      ) : (
+        <p className="msg">Verifica in corso…</p>
+      )}
+    </div>
+  );
+}
+
 /* ---------- pagina principale ---------- */
 export default function Home() {
   const [session, setSession] = useState(undefined); // undefined = loading
+  const [autorizzato, setAutorizzato] = useState(null); // null = verifica in corso
   const [data, setData] = useState(null);
   const [errore, setErrore] = useState("");
   const [view, setView] = useState("home");
@@ -277,6 +330,13 @@ export default function Home() {
   useEffect(() => {
     if (!session) return;
     (async () => {
+      // verifica whitelist: la RLS mostra solo la propria riga
+      const { data: me } = await supabase
+        .from("membri_autorizzati")
+        .select("email")
+        .maybeSingle();
+      if (!me) { setAutorizzato(false); return; }
+      setAutorizzato(true);
       const [pa, gi, pr, vo] = await Promise.all([
         supabase.from("partite").select("*"),
         supabase.from("giocatori").select("*"),
@@ -294,6 +354,9 @@ export default function Home() {
 
   if (session === undefined) return <div className="centered">Caricamento…</div>;
   if (!session) return <Login />;
+  if (autorizzato === false) {
+    return <RichiediAccesso email={session.user?.email} />;
+  }
   if (errore) return <div className="centered">Errore dati: {errore}</div>;
   if (!data || !S) return <div className="centered">Carico le partite…</div>;
 
@@ -339,8 +402,8 @@ export default function Home() {
     <div className="wrap">
       <header>
         <div className="brand">
-          <h1>Monday <em>League</em></h1>
-          <span className="season">Calciotto del Lunedì · Bettinelli · Stagione 2026</span>
+          <h1>Scarsi <em>League</em></h1>
+          <span className="season">Calci8Lunedì · Bettinelli · Stagione 2026</span>
         </div>
         <span className="livebadge">● DATI LIVE DA SUPABASE</span>
       </header>
