@@ -280,7 +280,8 @@ function RichiediAccesso({ email }) {
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    supabase.from("richieste_accesso").select("stato").maybeSingle()
+    supabase.from("richieste_accesso").select("stato")
+      .eq("email", (email || "").toLowerCase()).maybeSingle()
       .then(({ data }) => setStato(data ? "inviata" : "nuova"));
   }, []);
 
@@ -387,13 +388,16 @@ export default function Home() {
     if (!session) return;
     (async () => {
       // 1) consenso privacy registrato?
-      const { data: c } = await supabase.from("consensi").select("email").maybeSingle();
+      const mailC = (session.user?.email || "").toLowerCase();
+      const { data: c } = await supabase.from("consensi").select("email").eq("email", mailC).maybeSingle();
       if (!c) { setConsenso(false); return; }
       setConsenso(true);
       // 2) verifica whitelist: la RLS mostra solo la propria riga
+      const mail = (session.user?.email || "").toLowerCase();
       const { data: me } = await supabase
         .from("membri_autorizzati")
         .select("email, ruolo")
+        .eq("email", mail)
         .maybeSingle();
       if (!me) { setAutorizzato(false); return; }
       setAutorizzato(true);
