@@ -3,7 +3,7 @@
 Derivata dal documento di visione (19 sezioni). Priorità decise con Alessandro.
 Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
 
-## ✅ Già fatto (v0.1 → v0.8.0)
+## ✅ Già fatto (v0.1 → v0.9.0)
 
 - Home lega: hero ultima partita, statistiche, classifica generale con forma,
   AI insight (§1 in parte)
@@ -19,15 +19,17 @@ Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
   the Week con grafica campo screenshot-friendly (§7) · prima infornata badge
   (presenze, gol, MVP, serie vittorie, Saracinesca, Scarso Certificato) su
   carta e scheda giocatore (§6)
-
-## v0.9 — "La Stagione"
-
-- Stagioni come entità (tabella `stagioni`, filtro globale) (§5 filtri)
-- Grafico andamento voto/overall nel profilo (§3 andamento)
-- Player of the Month + carta speciale (§4/§8)
-- Premi stagionali configurabili + Hall of Fame (§8/§16)
-- Dati manuali post-partita dall'admin: assist, miglior portiere, note (§12)
-- Ammissibilità classifiche: soglie min. presenze per premi (§5)
+- **v0.9 "La Stagione"**: refactoring in `lib/engine.js` + `components/` ·
+  login email+password con registrazione libera, reset password, magic link
+  e Google (§10) · stagioni come entità con selettore in nav e opzione
+  "tutte le stagioni" (§5 filtri) · `/hall-of-fame` con vincitori per
+  stagione conclusa (§16) · dati manuali post-partita dall'admin (assist,
+  clean sheet, gol subiti, cartellini, autogol) e sezione Premi (§12) ·
+  gestione admin di partite/stagioni (elimina con conferma forte, sposta
+  partite tra stagioni, apri/chiudi/attiva stagioni) · classifiche assist e
+  clean sheet, Player of the Month automatico con carta speciale (§4/§8) ·
+  premi in bacheca profilo e pagina partita · grafici SVG andamento
+  voto/overall nel profilo (§3 andamento)
 
 ## v1.0 — "La Piattaforma"
 
