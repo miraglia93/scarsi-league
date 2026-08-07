@@ -34,7 +34,7 @@ function assemble(partite, giocatori, prestazioni, votiRaw) {
       let mvp = 0;
       rows.forEach((pr) => {
         if (teams[pr.squadra]) teams[pr.squadra].push(pr.giocatore_id);
-        stats[pr.giocatore_id] = [pr.voto == null ? null : Number(pr.voto), pr.gol || 0];
+        stats[pr.giocatore_id] = [pr.voto == null ? null : Number(pr.voto), pr.gol || 0, pr.ruolo || null];
         if (pr.motm) mvp = pr.giocatore_id;
       });
       return {
@@ -170,6 +170,59 @@ function cardStats(s) {
     ["DIF", clamp(base + j(5) + (s.ruolo === "DIF" ? 10 : s.ruolo === "POR" ? 8 : -8), 40, 96)],
     ["FIS", clamp(Math.round(50 + s.winRate * 30) + j(6), 40, 96)],
   ];
+}
+
+/* ---------- Team of the Week ---------- */
+const RUOLI_TOTW = ["POR", "DIF", "CEN", "ATT"];
+const FORMAZIONE_1338 = { POR: 1, DIF: 3, CEN: 3, ATT: 1 };
+
+function buildTOTW(m, P) {
+  const players = Object.values(m.teams).flat()
+    .map((pid) => {
+      const [voto, gol, ruoloPartita] = m.stats[pid] || [null, 0, null];
+      const p = P[pid];
+      if (!p || voto == null) return null;
+      const ruolo = RUOLI_TOTW.includes(ruoloPartita) ? ruoloPartita : (RUOLI_TOTW.includes(p.ruolo) ? p.ruolo : "CEN");
+      return { ...p, voto, gol, mvp: m.mvp === pid, ruolo };
+    })
+    .filter(Boolean);
+
+  const byRole = {};
+  RUOLI_TOTW.forEach((r) => { byRole[r] = players.filter((p) => p.ruolo === r).sort((a, b) => b.voto - a.voto); });
+
+  const bande = { POR: [], DIF: [], CEN: [], ATT: [] };
+  const usedIds = new Set();
+  let adattata = false;
+
+  RUOLI_TOTW.forEach((r) => {
+    const n = FORMAZIONE_1338[r];
+    const pick = byRole[r].filter((p) => !usedIds.has(p.id)).slice(0, n);
+    pick.forEach((p) => { bande[r].push(p); usedIds.add(p.id); });
+    const mancano = n - pick.length;
+    if (mancano > 0) {
+      adattata = true;
+      const rimanenti = players.filter((p) => !usedIds.has(p.id)).sort((a, b) => b.voto - a.voto).slice(0, mancano);
+      rimanenti.forEach((p) => { bande[r].push(p); usedIds.add(p.id); });
+    }
+  });
+
+  return { bande, adattata, disponibili: players.length };
+}
+
+function TotwCard({ p }) {
+  return (
+    <div className="totwcard" title={p.nome}>
+      {p.foto
+        ? <img className="tc-foto" src={p.foto} alt={p.nome} />
+        : <div className="tc-avatar">{(p.nick || p.nome).split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}</div>}
+      <span className="tc-name">{p.nick || p.nome}</span>
+      <span className="tc-meta">
+        {p.mvp && <i className="tc-mvp">⭐</i>}
+        <b className="tc-voto">{p.voto.toFixed(1)}</b>
+        {p.gol > 0 && <i className="tc-gol">⚽{p.gol > 1 ? `×${p.gol}` : ""}</i>}
+      </span>
+    </div>
+  );
 }
 
 /* ---------- componenti UI ---------- */
@@ -376,6 +429,7 @@ export default function Home() {
   const [errore, setErrore] = useState("");
   const [view, setView] = useState("home");
   const [sel, setSel] = useState(null);
+  const [totwId, setTotwId] = useState(null);
   const [soloRegulars, setSoloRegulars] = useState(true);
 
   useEffect(() => {
@@ -463,6 +517,8 @@ export default function Home() {
   const classifica = [...shown].sort((a, b) => b.punti - a.punti || b.mediaVoto - a.mediaVoto);
   const last = MATCHES[MATCHES.length - 1];
   const lastTeams = Object.keys(last.teams);
+  const totwMatch = MATCHES.find((m) => m.dbId === totwId) || last;
+  const totw = buildTOTW(totwMatch, S);
   const totGol = MATCHES.reduce((a, m) => a + Object.values(m.score).reduce((x, y) => x + y, 0), 0);
   const golAttribuiti = players.reduce((a, p) => a + p.gol, 0);
   const capocannoniere = [...players].sort((a, b) => b.gol - a.gol)[0];
@@ -506,7 +562,7 @@ export default function Home() {
       </header>
 
       <nav>
-        {[["home", "Home"], ["classifiche", "Classifiche"], ["giocatori", "Giocatori"], ["record", "Record"]].map(([k, l]) => (
+        {[["home", "Home"], ["classifiche", "Classifiche"], ["giocatori", "Giocatori"], ["record", "Record"], ["totw", "TOTW"]].map(([k, l]) => (
           <button key={k} className={view === k && sel == null ? "on" : ""} onClick={() => { setView(k); setSel(null); }}>{l}</button>
         ))}
         {leghe.length > 1 && (
@@ -655,6 +711,45 @@ export default function Home() {
               <div className="who">{topVoto.nome}</div>
             </div>
           </div>
+        </>
+      )}
+
+      {sel == null && view === "totw" && (
+        <>
+          <h2>Team of the Week
+            <select className="legasel" value={totwMatch.dbId} onChange={(e) => setTotwId(Number(e.target.value))}>
+              {[...MATCHES].reverse().map((m) => {
+                const t = Object.keys(m.teams);
+                return <option key={m.dbId} value={m.dbId}>{m.d} · {t[0]} {m.score[t[0]]}-{m.score[t[1]]} {t[1]}</option>;
+              })}
+            </select>
+          </h2>
+          {totw.adattata && (
+            <div className="note">⚠ Ruoli insufficienti per la 1-3-3-1: schierati i migliori voti disponibili a prescindere dal ruolo.</div>
+          )}
+          {totw.disponibili === 0 ? (
+            <p className="season">Nessun voto disponibile per questa partita.</p>
+          ) : (
+            <div className="pitch">
+              <div className="pitch-header">
+                <span className="pitch-logo">Scarsi <em>League</em></span>
+                <h3 className="pitch-title">Team of the Week · {totwMatch.d}</h3>
+              </div>
+              <div className="pitch-bande">
+                <div className="pitch-lines" aria-hidden="true">
+                  <span className="pl-half" />
+                  <span className="pl-circle" />
+                  <span className="pl-box pl-box-top" />
+                  <span className="pl-box pl-box-bottom" />
+                </div>
+                {["ATT", "CEN", "DIF", "POR"].map((r) => (
+                  <div key={r} className="banda">
+                    {totw.bande[r].map((p) => <TotwCard key={p.id} p={p} />)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
 
