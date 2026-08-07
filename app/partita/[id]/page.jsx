@@ -3,14 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
-
-// TODO v0.9: estrarre in lib/engine.js insieme alle funzioni analoghe di app/page.jsx
-const MESI = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
-const fmtData = (iso) => {
-  const d = new Date(iso + "T00:00:00");
-  return `${d.getDate()} ${MESI[d.getMonth()]} ${d.getFullYear()}`;
-};
-const iniziali = (nome) => (nome || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+import { fmtData, iniziali } from "../../../lib/engine";
 
 function RigaFormazione({ p }) {
   return (
@@ -33,7 +26,7 @@ function RigaFormazione({ p }) {
 
 function buildReportText({ partita, squadre, gol, righe, mvp, media1, media2, golAttribuiti, totGol, leader }) {
   const righeStruttura = partita.struttura ? ` · ${partita.struttura}` : "";
-  const lines = [`⚽ SCARSI LEAGUE — Calci8Lunedì ${fmtData(partita.data)}${righeStruttura}`];
+  const lines = [`⚽ SCARSI LEAGUE — Calci8Lunedì ${fmtData(partita.data, { year: true })}${righeStruttura}`];
   lines.push(`${squadre[0]} ${gol[0]} – ${gol[1]} ${squadre[1]}`);
   if (mvp) lines.push(`⭐ MVP: ${mvp.nickname || mvp.nome} (voto ${mvp.voto})`);
 
@@ -198,7 +191,7 @@ export default function Partita() {
       </div>
 
       <section className="hero" style={{ marginTop: 20 }}>
-        <span className="lbl">{fmtData(partita.data)}{partita.struttura ? ` · ${partita.struttura}` : ""}</span>
+        <span className="lbl">{fmtData(partita.data, { year: true })}{partita.struttura ? ` · ${partita.struttura}` : ""}</span>
         <div className="team"><b>{squadre[0]}</b>{forza[0] != null && <span>forza {forza[0]}</span>}</div>
         <div className="score">{gol[0]}<span>–</span>{gol[1]}</div>
         <div className="team"><b>{squadre[1]}</b>{forza[1] != null && <span>forza {forza[1]}</span>}</div>
