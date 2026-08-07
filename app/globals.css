@@ -219,3 +219,16 @@ a.hero:hover{border-color:rgba(227,197,103,.4);}
 .badge.bronze{border-color:#B08860;color:#E8CBA8;}
 .fut-badges{display:flex;justify-content:center;gap:5px;margin-top:6px;}
 .fut-badge{font-size:13px;cursor:default;}
+
+/* v0.9 — auth email+password */
+.pwdfield{position:relative;}
+.pwdfield input{padding-right:46px;}
+.login .pwdtoggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:auto;
+  background:none;border:none;padding:6px 8px;font-size:16px;margin:0;line-height:1;}
+.login .authtoggle{display:flex;width:100%;margin:14px 0 0;}
+.login .authtoggle button{flex:1;width:auto;background:none;color:#8FA096;padding:8px 12px;
+  font-size:13px;font-weight:700;border-radius:6px;}
+.login .authtoggle button.on{background:#E3C567;color:#0B1210;}
+.login .linkbtn{background:none;border:none;color:#E3C567;font-weight:700;font-size:14px;
+  padding:0;width:auto;text-align:center;display:block;margin:0 auto;cursor:pointer;letter-spacing:0;}
+.login .linkbtn:hover{text-decoration:underline;}

@@ -38,21 +38,31 @@ function BadgeRow({ badges }) {
   );
 }
 
+function tradErroreAuth(msg) {
+  const m = (msg || "").toLowerCase();
+  if (m.includes("invalid login credentials")) return "Email o password errati.";
+  if (m.includes("email not confirmed")) return "Email non ancora confermata: controlla la posta e clicca il link di conferma.";
+  if (m.includes("user already registered") || m.includes("already registered")) return "Esiste già un account con questa email — prova ad accedere invece di registrarti.";
+  if (m.includes("password should be at least") || m.includes("password is too short")) return "La password deve avere almeno 8 caratteri.";
+  if (m.includes("rate limit") || m.includes("too many requests")) return "Troppi tentativi: riprova tra qualche minuto.";
+  if (m.includes("unable to validate email") || m.includes("invalid email")) return "Indirizzo email non valido.";
+  if (m.includes("same_password")) return "La nuova password deve essere diversa da quella attuale.";
+  return msg;
+}
+
 function Login() {
+  const [modo, setModo] = useState("password"); // "password" | "magic"
+  const [azione, setAzione] = useState("accedi"); // "accedi" | "registrati" (solo modo password)
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
+  const [mostraPassword, setMostraPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [sent, setSent] = useState(false);
+  const [registrato, setRegistrato] = useState(false);
+  const [resetInviato, setResetInviato] = useState(false);
 
-  const send = async () => {
-    setBusy(true); setErr("");
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
-    });
-    setBusy(false);
-    if (error) setErr(error.message); else setSent(true);
-  };
+  const passwordOk = password.length >= 8;
 
   const google = async () => {
     setErr("");
@@ -63,24 +73,125 @@ function Login() {
     if (error) setErr("Accesso Google non disponibile: " + error.message);
   };
 
+  const inviaMagicLink = async () => {
+    setBusy(true); setErr("");
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
+    });
+    setBusy(false);
+    if (error) setErr(tradErroreAuth(error.message)); else setSent(true);
+  };
+
+  const accedi = async () => {
+    setBusy(true); setErr("");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setBusy(false);
+    if (error) setErr(tradErroreAuth(error.message));
+  };
+
+  const registrati = async () => {
+    if (!passwordOk) { setErr("La password deve avere almeno 8 caratteri."); return; }
+    setBusy(true); setErr("");
+    const { error } = await supabase.auth.signUp({
+      email, password,
+      options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
+    });
+    setBusy(false);
+    if (error) setErr(tradErroreAuth(error.message)); else setRegistrato(true);
+  };
+
+  const chiediReset = async () => {
+    if (!email) { setErr('Inserisci la tua email, poi clicca di nuovo su "Password dimenticata?".'); return; }
+    setBusy(true); setErr("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/reset` : undefined,
+    });
+    setBusy(false);
+    if (error) setErr(tradErroreAuth(error.message)); else setResetInviato(true);
+  };
+
+  const submit = () => {
+    if (modo === "magic") return inviaMagicLink();
+    if (azione === "registrati") return registrati();
+    return accedi();
+  };
+
+  if (registrato) {
+    return (
+      <div className="login">
+        <h1>Scarsi <em>League</em></h1>
+        <p className="msg">✉️ Quasi fatto! Controlla <b>{email}</b> e clicca il link per confermare l&apos;indirizzo, poi torna qui per accedere.</p>
+      </div>
+    );
+  }
+  if (sent) {
+    return (
+      <div className="login">
+        <h1>Scarsi <em>League</em></h1>
+        <p className="msg">✉️ Fatto! Controlla la tua email e clicca il link di accesso.</p>
+      </div>
+    );
+  }
+  if (resetInviato) {
+    return (
+      <div className="login">
+        <h1>Scarsi <em>League</em></h1>
+        <p className="msg">✉️ Ti abbiamo inviato un&apos;email per reimpostare la password. Controlla la posta.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="login">
       <h1>Scarsi <em>League</em></h1>
       <p className="season">Accesso riservato ai membri della lega</p>
-      {sent ? (
-        <p className="msg">✉️ Fatto! Controlla la tua email e clicca il link di accesso.</p>
-      ) : (
+
+      <button className="gbtn" onClick={google}>Continua con Google</button>
+      <div className="divider"><span>oppure</span></div>
+
+      {modo === "password" && (
+        <span className="toggle authtoggle">
+          <button className={azione === "accedi" ? "on" : ""} onClick={() => { setAzione("accedi"); setErr(""); }}>Accedi</button>
+          <button className={azione === "registrati" ? "on" : ""} onClick={() => { setAzione("registrati"); setErr(""); }}>Registrati</button>
+        </span>
+      )}
+
+      <input type="email" placeholder="la-tua-email@esempio.it" value={email}
+        onChange={(e) => setEmail(e.target.value)} />
+
+      {modo === "password" && (
         <>
-          <button className="gbtn" onClick={google}>Continua con Google</button>
-          <div className="divider"><span>oppure</span></div>
-          <input type="email" placeholder="la-tua-email@esempio.it" value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && email && send()} />
-          <button onClick={send} disabled={busy || !email}>{busy ? "Invio…" : "Inviami il link di accesso"}</button>
-          {err && <p className="msg">⚠ {err}</p>}
-          <p className="msg">Continuando accetti la <a className="plink" href="/privacy">Privacy Policy</a> della lega.</p>
+          <div className="pwdfield">
+            <input type={mostraPassword ? "text" : "password"} placeholder="Password" value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && email && password && submit()} />
+            <button type="button" className="pwdtoggle" onClick={() => setMostraPassword((v) => !v)} aria-label="Mostra/nascondi password">
+              {mostraPassword ? "🙈" : "👁"}
+            </button>
+          </div>
+          {azione === "registrati" && password.length > 0 && !passwordOk && (
+            <p className="msg">La password deve avere almeno 8 caratteri.</p>
+          )}
         </>
       )}
+
+      <button onClick={submit} disabled={busy || !email || (modo === "password" && !password)}>
+        {busy ? "Un attimo…" : modo === "magic" ? "Inviami il link di accesso" : azione === "registrati" ? "Crea account" : "Accedi"}
+      </button>
+
+      {modo === "password" && azione === "accedi" && (
+        <p className="msg"><a className="plink" href="#" onClick={(e) => { e.preventDefault(); chiediReset(); }}>Password dimenticata?</a></p>
+      )}
+
+      {err && <p className="msg">⚠ {err}</p>}
+
+      <div className="divider"><span>oppure</span></div>
+      <button type="button" className="linkbtn" onClick={() => { setModo(modo === "password" ? "magic" : "password"); setErr(""); }}>
+        {modo === "password" ? "Accedi senza password" : "Accedi con password"}
+      </button>
+
+      <p className="msg">Continuando accetti la <a className="plink" href="/privacy">Privacy Policy</a> della lega.</p>
     </div>
   );
 }
