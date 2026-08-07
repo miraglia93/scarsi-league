@@ -295,6 +295,7 @@ export default function Home() {
   const [ruoloUtente, setRuoloUtente] = useState("membro");
   const [leghe, setLeghe] = useState([]);
   const [legaId, setLegaId] = useState(null);
+  const [stagioneId, setStagioneId] = useState(null); // null = non ancora scelta esplicitamente (default: stagione attiva)
   const [raw, setRaw] = useState(null);
   const [errore, setErrore] = useState("");
   const [view, setView] = useState("home");
@@ -326,32 +327,44 @@ export default function Home() {
       if (!me) { setAutorizzato(false); return; }
       setAutorizzato(true);
       setRuoloUtente(me.ruolo || "membro");
-      const [pa, gi, pr, vo, le] = await Promise.all([
+      const [pa, gi, pr, vo, le, st] = await Promise.all([
         supabase.from("partite").select("*"),
         supabase.from("giocatori").select("*"),
         supabase.from("prestazioni").select("*"),
         supabase.from("voti_ricevuti").select("*"),
         supabase.from("leghe").select("*").order("id"),
+        supabase.from("stagioni").select("*").order("inizio", { ascending: false }),
       ]);
       const err = pa.error || gi.error || pr.error || vo.error;
       if (err) { setErrore(err.message); return; }
       setLeghe(le.data || []);
       setLegaId((le.data || [])[0]?.id ?? null);
-      setRaw({ pa: pa.data, gi: gi.data, pr: pr.data, vo: vo.data });
+      setRaw({ pa: pa.data, gi: gi.data, pr: pr.data, vo: vo.data, st: st.data || [] });
     })();
   }, [session]);
+
+  const stagioniLega = useMemo(() => (
+    raw ? raw.st.filter((s) => s.lega_id === legaId).sort((a, b) => (a.inizio < b.inizio ? 1 : -1)) : []
+  ), [raw, legaId]);
+  const stagioneAttiva = stagioniLega.find((s) => s.attiva) || null;
+  const stagioneSel = stagioneId ?? stagioneAttiva?.id ?? "all";
+  const selettoreStagione = stagioniLega.length > 0 && (
+    <select className="legasel" value={stagioneSel} onChange={(e) => setStagioneId(e.target.value === "all" ? "all" : Number(e.target.value))}>
+      <option value="all">Tutte le stagioni</option>
+      {stagioniLega.map((s) => <option key={s.id} value={s.id}>{s.nome}{s.attiva ? " · in corso" : ""}</option>)}
+    </select>
+  );
 
   const data = useMemo(() => {
     if (!raw || legaId == null) return null;
     const gi = raw.gi.filter((g) => g.lega_id === legaId);
-    const ids = new Set(gi.map((g) => g.id));
-    const pa = raw.pa.filter((p) => p.lega_id === legaId);
+    const pa = raw.pa.filter((p) => p.lega_id === legaId && (stagioneSel === "all" || p.stagione_id === stagioneSel));
     const paIds = new Set(pa.map((p) => p.id));
     const pr = raw.pr.filter((p) => paIds.has(p.partita_id));
     const vo = raw.vo.filter((v) => paIds.has(v.partita_id));
     if (!pa.length) return { P: {}, matches: [], votes: [], vuota: true };
     return assemble(pa, gi, pr, vo);
-  }, [raw, legaId]);
+  }, [raw, legaId, stagioneSel]);
   const S = useMemo(() => (data && !data.vuota ? buildStats(data.P, data.matches) : null), [data]);
   const rel = useMemo(() => (data ? pairAndNemesis(data.matches) : null), [data]);
 
@@ -369,14 +382,20 @@ export default function Home() {
       <div className="brand"><h1>Scarsi <em>League</em></h1></div>
       <nav>
         {leghe.length > 1 && (
-          <select className="legasel" value={legaId ?? ""} onChange={(e) => setLegaId(Number(e.target.value))}>
+          <select className="legasel" value={legaId ?? ""} onChange={(e) => { setLegaId(Number(e.target.value)); setStagioneId(null); }}>
             {leghe.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
           </select>
         )}
+        {selettoreStagione}
         <a className="navlink" href="/profilo">Profilo</a>
+        <a className="navlink" href="/hall-of-fame">Hall of Fame</a>
         {ruoloUtente === "admin" && <a className="navlink" href="/admin">Admin</a>}
       </nav>
-      <p className="centered">Questa lega non ha ancora partite importate ⚽</p>
+      <p className="centered">
+        {stagioneSel !== "all" && stagioneSel === stagioneAttiva?.id
+          ? `La stagione ${stagioneAttiva.nome} inizia a breve ⚽`
+          : "Questa lega non ha ancora partite importate ⚽"}
+      </p>
     </div>
   );
   if (!data || !S) return <div className="centered">Carico le partite…</div>;
@@ -427,7 +446,7 @@ export default function Home() {
       <header>
         <div className="brand">
           <h1>Scarsi <em>League</em></h1>
-          <span className="season">Calci8Lunedì · Bettinelli · Stagione 2026</span>
+          <span className="season">Calci8Lunedì · Bettinelli · {stagioneSel === "all" ? "Tutte le stagioni" : (stagioniLega.find((s) => s.id === stagioneSel)?.nome || "")}</span>
         </div>
         <span className="livebadge">● DATI LIVE DA SUPABASE</span>
       </header>
@@ -437,11 +456,13 @@ export default function Home() {
           <button key={k} className={view === k && sel == null ? "on" : ""} onClick={() => { setView(k); setSel(null); }}>{l}</button>
         ))}
         {leghe.length > 1 && (
-          <select className="legasel" value={legaId ?? ""} onChange={(e) => setLegaId(Number(e.target.value))}>
+          <select className="legasel" value={legaId ?? ""} onChange={(e) => { setLegaId(Number(e.target.value)); setStagioneId(null); }}>
             {leghe.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
           </select>
         )}
+        {selettoreStagione}
         <a className="navlink" href="/profilo">Profilo</a>
+        <a className="navlink" href="/hall-of-fame">Hall of Fame</a>
         {ruoloUtente === "admin" && <a className="navlink" href="/admin">Admin</a>}
         <button className="logout" onClick={() => supabase.auth.signOut()}>Esci</button>
       </nav>

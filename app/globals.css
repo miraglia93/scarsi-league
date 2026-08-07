@@ -232,3 +232,14 @@ a.hero:hover{border-color:rgba(227,197,103,.4);}
 .login .linkbtn{background:none;border:none;color:#E3C567;font-weight:700;font-size:14px;
   padding:0;width:auto;text-align:center;display:block;margin:0 auto;cursor:pointer;letter-spacing:0;}
 .login .linkbtn:hover{text-decoration:underline;}
+
+/* v0.9 — Hall of Fame */
+.hofcard{background:linear-gradient(160deg,#1A2119,#121B17);border:1px solid rgba(227,197,103,.25);
+  border-radius:14px;padding:20px 18px;}
+.hofcard h3{margin-bottom:14px;}
+.hofrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  padding:7px 0;border-bottom:1px solid rgba(232,237,230,.07);font-size:13px;}
+.hofrow:last-of-type{border-bottom:none;}
+.hofrow span{color:#8FA096;flex-shrink:0;}
+.hofrow b{color:#E8EDE6;text-align:right;}
+.hofmeta{margin-top:12px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8FA096;text-align:center;}
