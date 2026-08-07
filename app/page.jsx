@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges } from "../lib/engine";
+import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth } from "../lib/engine";
 import PlayerCard from "../components/PlayerCard";
 import FormaDots from "../components/FormaDots";
 import MiniTable from "../components/MiniTable";
@@ -10,6 +10,8 @@ import MiniTable from "../components/MiniTable";
 /* ============================================================
    SCARSI LEAGUE — Next.js + Supabase (dati live)
    ============================================================ */
+
+const MESI_LUNGHI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
 
 function TotwCard({ p }) {
   return (
@@ -33,6 +35,19 @@ function BadgeRow({ badges }) {
     <div className="badgerow">
       {badges.map((b) => (
         <span key={b.id} className={`badge ${b.tier}`} title={b.nome}>{b.icon} {b.nome}</span>
+      ))}
+    </div>
+  );
+}
+
+function PremiRow({ premi }) {
+  if (!premi.length) return null;
+  return (
+    <div className="badgerow">
+      {premi.map((p) => (
+        <span key={p.id} className="badge gold" title={`${p.tipo}${p.periodo ? ` · ${p.periodo}` : ""}`}>
+          {p.emoji || "🏆"} {p.etichetta || p.tipo}
+        </span>
       ))}
     </div>
   );
@@ -327,19 +342,21 @@ export default function Home() {
       if (!me) { setAutorizzato(false); return; }
       setAutorizzato(true);
       setRuoloUtente(me.ruolo || "membro");
-      const [pa, gi, pr, vo, le, st] = await Promise.all([
+      const [pa, gi, pr, vo, le, st, dm, pre] = await Promise.all([
         supabase.from("partite").select("*"),
         supabase.from("giocatori").select("*"),
         supabase.from("prestazioni").select("*"),
         supabase.from("voti_ricevuti").select("*"),
         supabase.from("leghe").select("*").order("id"),
         supabase.from("stagioni").select("*").order("inizio", { ascending: false }),
+        supabase.from("dati_manuali").select("*"),
+        supabase.from("premi").select("*"),
       ]);
       const err = pa.error || gi.error || pr.error || vo.error;
       if (err) { setErrore(err.message); return; }
       setLeghe(le.data || []);
       setLegaId((le.data || [])[0]?.id ?? null);
-      setRaw({ pa: pa.data, gi: gi.data, pr: pr.data, vo: vo.data, st: st.data || [] });
+      setRaw({ pa: pa.data, gi: gi.data, pr: pr.data, vo: vo.data, st: st.data || [], dm: dm.data || [], premi: pre.data || [] });
     })();
   }, [session]);
 
@@ -362,8 +379,10 @@ export default function Home() {
     const paIds = new Set(pa.map((p) => p.id));
     const pr = raw.pr.filter((p) => paIds.has(p.partita_id));
     const vo = raw.vo.filter((v) => paIds.has(v.partita_id));
-    if (!pa.length) return { P: {}, matches: [], votes: [], vuota: true };
-    return assemble(pa, gi, pr, vo);
+    const dm = raw.dm.filter((d) => paIds.has(d.partita_id));
+    const premi = raw.premi.filter((p) => p.lega_id === legaId);
+    if (!pa.length) return { P: {}, matches: [], votes: [], dm: [], premi: [], vuota: true };
+    return { ...assemble(pa, gi, pr, vo), dm, premi };
   }, [raw, legaId, stagioneSel]);
   const S = useMemo(() => (data && !data.vuota ? buildStats(data.P, data.matches) : null), [data]);
   const rel = useMemo(() => (data ? pairAndNemesis(data.matches) : null), [data]);
@@ -400,7 +419,7 @@ export default function Home() {
   );
   if (!data || !S) return <div className="centered">Carico le partite…</div>;
 
-  const { matches: MATCHES, votes: VOTES } = data;
+  const { matches: MATCHES, votes: VOTES, dm: DM, premi: PREMI } = data;
   const players = Object.values(S).filter((p) => p.presenze > 0);
   const shown = soloRegulars ? players.filter((p) => p.presenze >= 2) : players;
   const classifica = [...shown].sort((a, b) => b.punti - a.punti || b.mediaVoto - a.mediaVoto);
@@ -413,6 +432,16 @@ export default function Home() {
   const capocannoniere = [...players].sort((a, b) => b.gol - a.gol)[0];
   const topVoto = [...players].filter((p) => p.presenze >= 2).sort((a, b) => b.mediaVoto - a.mediaVoto)[0];
   const topMvp = [...players].sort((a, b) => b.mvp - a.mvp || b.mediaVoto - a.mediaVoto)[0];
+
+  const assistTotali = {};
+  const cleanSheetTotali = {};
+  DM.forEach((d) => {
+    if (d.assist) assistTotali[d.giocatore_id] = (assistTotali[d.giocatore_id] || 0) + d.assist;
+    if (d.clean_sheet) cleanSheetTotali[d.giocatore_id] = (cleanSheetTotali[d.giocatore_id] || 0) + 1;
+  });
+
+  const potmDati = computePlayerOfTheMonth(MATCHES);
+  const potm = potmDati ? S[potmDati.id] : null;
 
   let maxGolPartita = { v: 0 };
   MATCHES.forEach((m) => Object.entries(m.stats).forEach(([pid, [, g]]) => {
@@ -440,6 +469,7 @@ export default function Home() {
   const selNemesis = selS ? worstNemesis(selS.id, rel) : null;
   const selFC = selS ? fanCritic(selS.id, VOTES) : null;
   const selBadges = selS ? computeBadges(selS, players) : [];
+  const selPremi = selS ? PREMI.filter((p) => p.giocatore_id === selS.id) : [];
 
   return (
     <div className="wrap">
@@ -478,6 +508,24 @@ export default function Home() {
               <div className="mvpline">⭐ MVP <b>{S[last.mvp].nome}</b> · voto {last.stats[last.mvp][0]}</div>
             )}
           </a>
+
+          {potm && potmDati && (
+            <>
+              <h2>🏅 Player of the Month · {MESI_LUNGHI[new Date().getMonth()]}</h2>
+              <div className="potmcard">
+                <div className="potm-wrap">
+                  <span className="potm-ribbon">🏅 POTM</span>
+                  <PlayerCard s={potm} badges={computeBadges(potm, players)} onClick={() => setSel(potm.id)} />
+                </div>
+                <div className="potm-stats">
+                  <div className="stat"><b>{potmDati.mediaVoto.toFixed(2)}</b><span>Media voto del mese</span></div>
+                  <div className="stat"><b>{potmDati.presenze}</b><span>Presenze nel mese</span></div>
+                  <div className="stat"><b>{Math.round(potmDati.winRate * 100)}%</b><span>Win rate nel mese</span></div>
+                  {potmDati.mvp > 0 && <div className="stat"><b>{potmDati.mvp}</b><span>MVP nel mese</span></div>}
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="strip">
             <div className="stat"><b>{MATCHES.length}</b><span>Partite</span></div>
@@ -548,6 +596,18 @@ export default function Home() {
               cols={["Giocatore", "Pres.", "V-N-S"]}
               rows={[...players].sort((a, b) => b.presenze - a.presenze || b.mediaVoto - a.mediaVoto).slice(0, 8)
                 .map((p) => [p.nome, p.presenze, `${p.w}-${p.d}-${p.l}`])} />
+            {Object.keys(assistTotali).length > 0 && (
+              <MiniTable title="🅰️ Assist" note="Dati inseriti a mano dall'admin"
+                cols={["Giocatore", "Assist", "Pres."]}
+                rows={Object.entries(assistTotali).sort((a, b) => b[1] - a[1]).slice(0, 8)
+                  .map(([gid, n]) => [S[gid]?.nome || "—", n, S[gid]?.presenze || 0])} />
+            )}
+            {Object.keys(cleanSheetTotali).length > 0 && (
+              <MiniTable title="🧤 Clean sheet" note="Dati inseriti a mano dall'admin"
+                cols={["Giocatore", "Clean sheet", "Pres."]}
+                rows={Object.entries(cleanSheetTotali).sort((a, b) => b[1] - a[1]).slice(0, 8)
+                  .map(([gid, n]) => [S[gid]?.nome || "—", n, S[gid]?.presenze || 0])} />
+            )}
           </div>
         </>
       )}
@@ -660,6 +720,7 @@ export default function Home() {
                 <div className="stat"><b>{Math.round(selS.winRate * 100)}%</b><span>Win rate</span></div>
               </div>
               <BadgeRow badges={selBadges} />
+              <PremiRow premi={selPremi} />
 
               {selFC && selFC.nVoti > 0 && selFC.fan && selFC.critic && selFC.fan.votante !== selFC.critic.votante && S[selFC.fan.votante] && S[selFC.critic.votante] && (
                 <div className="insight">

@@ -87,6 +87,7 @@ export default function Partita() {
   const [partita, setPartita] = useState(null);
   const [righe, setRighe] = useState([]);
   const [leader, setLeader] = useState(null);
+  const [premiPartita, setPremiPartita] = useState([]);
   const [errore, setErrore] = useState("");
 
   useEffect(() => {
@@ -112,6 +113,9 @@ export default function Partita() {
       const { data: dm } = await supabase.from("dati_manuali").select("*").eq("partita_id", id);
       const dmMap = {};
       (dm || []).forEach((d) => { dmMap[d.giocatore_id] = d; });
+
+      const { data: pre } = await supabase.from("premi").select("*").eq("partita_id", id);
+      setPremiPartita(pre || []);
 
       const ids = [...new Set((pr || []).map((r) => r.giocatore_id))];
       let giocMap = {};
@@ -217,6 +221,16 @@ export default function Partita() {
           <a className="plink" href={partita.fubles_url} target="_blank" rel="noreferrer">Vedi su Fubles ↗</a>
         )}
       </div>
+
+      {premiPartita.length > 0 && (
+        <div className="insight">
+          {premiPartita.map((p) => {
+            const g = righe.find((r) => r.giocatore_id === p.giocatore_id);
+            const nome = g ? (g.nickname || g.nome) : "Giocatore";
+            return <div key={p.id}>{p.emoji || "🏆"} <b>{p.etichetta || p.tipo}</b> — {nome}</div>;
+          })}
+        </div>
+      )}
 
       <div className="strip">
         <div className="stat"><b>{media1 != null ? media1.toFixed(2) : "—"}</b><span>Media {squadre[0]}</span></div>

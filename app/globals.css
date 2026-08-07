@@ -259,3 +259,14 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 .modal h3{color:#E05C4B;}
 .modal p{font-size:14px;line-height:1.6;color:#C9D2C7;margin:10px 0;}
 .modal input{margin:10px 0;}
+
+/* v0.9 — Player of the Month */
+.potmcard{display:flex;gap:24px;align-items:center;flex-wrap:wrap;
+  background:linear-gradient(160deg,#2E2708,#171408);border:2px solid #E3C567;border-radius:16px;
+  padding:22px 20px;margin-bottom:6px;box-shadow:0 0 30px rgba(227,197,103,.18);}
+.potm-wrap{position:relative;flex-shrink:0;}
+.potm-ribbon{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#E3C567;
+  color:#0B1210;font-family:'Anton';font-size:11px;letter-spacing:.08em;padding:4px 12px;
+  border-radius:20px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4);z-index:2;}
+.potm-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;
+  flex:1;min-width:220px;}
