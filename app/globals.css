@@ -208,3 +208,14 @@ a.hero:hover{border-color:rgba(227,197,103,.4);}
 .tc-voto{font-family:'Anton';font-size:11px;background:#E3C567;color:#0B1210;border-radius:5px;padding:1px 5px;}
 .tc-mvp,.tc-gol{font-style:normal;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.7);}
 @media(max-width:380px){.totwcard{width:58px;}.tc-foto,.tc-avatar{width:36px;height:36px;}.banda{gap:7px;}}
+
+/* v0.8 — badge */
+.badgerow{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 18px;}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;
+  font-size:12px;font-weight:700;background:#121B17;border:1px solid rgba(232,237,230,.18);
+  color:#C9D2C7;}
+.badge.gold{border-color:#E3C567;color:#F5E9C0;}
+.badge.silver{border-color:#AEB8BD;color:#E4EBEE;}
+.badge.bronze{border-color:#B08860;color:#E8CBA8;}
+.fut-badges{display:flex;justify-content:center;gap:5px;margin-top:6px;}
+.fut-badge{font-size:13px;cursor:default;}

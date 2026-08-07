@@ -225,6 +225,49 @@ function TotwCard({ p }) {
   );
 }
 
+/* ---------- badge ---------- */
+function computeBadges(s, players) {
+  const badges = [];
+  const tierFor = (v, [b, si, g]) => (v >= g ? "gold" : v >= si ? "silver" : v >= b ? "bronze" : null);
+
+  const presTier = tierFor(s.presenze, [5, 10, 25]);
+  if (presTier) badges.push({ id: "presenze", icon: "🎽", nome: "Stacanovista", tier: presTier });
+
+  const golTier = tierFor(s.gol, [5, 10, 25]);
+  if (golTier) badges.push({ id: "gol", icon: "⚽", nome: "Goleador", tier: golTier });
+
+  const mvpTier = tierFor(s.mvp, [1, 3, 5]);
+  if (mvpTier) badges.push({ id: "mvp", icon: "⭐", nome: "Man of the Match", tier: mvpTier });
+
+  let cur = 0, best = 0;
+  s.forma.forEach((e) => { cur = e === "W" ? cur + 1 : 0; best = Math.max(best, cur); });
+  const serieTier = best >= 5 ? "gold" : best >= 3 ? "bronze" : null;
+  if (serieTier) badges.push({ id: "serie", icon: "🔥", nome: "On Fire", tier: serieTier });
+
+  if (s.ruolo === "POR" && s.presenze >= 3) {
+    badges.push({ id: "saracinesca", icon: "🧤", nome: "Saracinesca", tier: "bronze" });
+  }
+
+  const eligibili = players.filter((p) => p.presenze >= 3);
+  if (eligibili.length) {
+    const peggio = [...eligibili].sort((a, b) => a.mediaVoto - b.mediaVoto)[0];
+    if (peggio.id === s.id) badges.push({ id: "scarso", icon: "🗑", nome: "Scarso Certificato", tier: "bronze" });
+  }
+
+  return badges;
+}
+
+function BadgeRow({ badges }) {
+  if (!badges.length) return null;
+  return (
+    <div className="badgerow">
+      {badges.map((b) => (
+        <span key={b.id} className={`badge ${b.tier}`} title={b.nome}>{b.icon} {b.nome}</span>
+      ))}
+    </div>
+  );
+}
+
 /* ---------- componenti UI ---------- */
 const tier = (ov) => (ov >= 82 ? "gold" : ov >= 72 ? "silver" : "bronze");
 
@@ -236,7 +279,7 @@ function FormaDots({ forma, n = 5 }) {
   );
 }
 
-function PlayerCard({ s, size = "lg", onClick }) {
+function PlayerCard({ s, size = "lg", onClick, badges }) {
   const t = tier(s.overall);
   return (
     <div className={`fut ${t} ${size}`} onClick={onClick} role={onClick ? "button" : undefined} tabIndex={onClick ? 0 : undefined}
@@ -250,6 +293,11 @@ function PlayerCard({ s, size = "lg", onClick }) {
         ? <img className="fut-foto" src={s.foto} alt={s.nome} />
         : <div className="fut-avatar">{s.nome.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}</div>}
       <div className="fut-name" title={s.nome}>{s.nick || s.nome}</div>
+      {badges && badges.length > 0 && (
+        <div className="fut-badges">
+          {badges.map((b) => <span key={b.id} className="fut-badge" title={b.nome}>{b.icon}</span>)}
+        </div>
+      )}
       {size === "lg" && (
         <div className="fut-stats">
           {cardStats(s).map(([k, v]) => <div key={k}><b>{v}</b><span>{k}</span></div>)}
@@ -550,6 +598,7 @@ export default function Home() {
   const selPartner = selS ? bestPartner(selS.id, rel) : null;
   const selNemesis = selS ? worstNemesis(selS.id, rel) : null;
   const selFC = selS ? fanCritic(selS.id, VOTES) : null;
+  const selBadges = selS ? computeBadges(selS, players) : [];
 
   return (
     <div className="wrap">
@@ -670,7 +719,7 @@ export default function Home() {
           </h2>
           <div className="grid">
             {[...shown].sort((a, b) => b.overall - a.overall).map((p) => (
-              <PlayerCard key={p.id} s={p} onClick={() => setSel(p.id)} />
+              <PlayerCard key={p.id} s={p} badges={computeBadges(p, players)} onClick={() => setSel(p.id)} />
             ))}
           </div>
         </>
@@ -757,7 +806,7 @@ export default function Home() {
         <>
           <button className="back" onClick={() => setSel(null)}>← Indietro</button>
           <div className="detail">
-            <PlayerCard s={selS} />
+            <PlayerCard s={selS} badges={selBadges} />
             <div>
               <div className="kv">
                 <div className="stat"><b>{selS.presenze}</b><span>Presenze</span></div>
@@ -767,6 +816,7 @@ export default function Home() {
                 <div className="stat"><b>{selS.mvp}</b><span>MVP</span></div>
                 <div className="stat"><b>{Math.round(selS.winRate * 100)}%</b><span>Win rate</span></div>
               </div>
+              <BadgeRow badges={selBadges} />
 
               {selFC && selFC.nVoti > 0 && selFC.fan && selFC.critic && selFC.fan.votante !== selFC.critic.votante && S[selFC.fan.votante] && S[selFC.critic.votante] && (
                 <div className="insight">

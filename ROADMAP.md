@@ -3,7 +3,7 @@
 Derivata dal documento di visione (19 sezioni). Priorità decise con Alessandro.
 Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
 
-## ✅ Già fatto (v0.1 → v0.7.1)
+## ✅ Già fatto (v0.1 → v0.8.0)
 
 - Home lega: hero ultima partita, statistiche, classifica generale con forma,
   AI insight (§1 in parte)
@@ -14,20 +14,11 @@ Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
 - Auth magic link, consenso privacy con registro, whitelist con richieste
   accesso + QR da campo, pannello admin, multi-lega nel DB + selettore (§10/§18/§19 in parte)
 - Import Fubles via Claude in Chrome con match_id anti-duplicati (§11)
-
-## 🎯 v0.8 — "Il Lunedì" (prossimo rilascio, prima della prossima partita)
-
-Obiettivo: cose che il gruppo VEDE e condivide.
-
-1. **Pagina partita** `/partita/[id]` (§2): dati, risultato, formazioni con
-   foto/voti/gol/MVP, media voto squadre, link Fubles
-2. **Report WhatsApp** (§13): bottone "Copia report" sulla pagina partita —
-   testo emoji pronto (risultato, MVP, marcatori, movimenti in classifica)
-3. **Team of the Week** (§7): miglior formazione della giornata per voto/ruolo,
-   grafica schierata in campo, screenshot-friendly
-4. **Badge prima infornata** (§6): 🎽 presenze (5/10/25), ⚽ gol (5/10/25),
-   ⭐ MVP (1/3/5), 🔥 serie vittorie (3/5), 🗑 Scarso Certificato (ironico).
-   Mostrati su profilo e scheda giocatore
+- **v0.8 "Il Lunedì"**: pagina partita `/partita/[id]` con formazioni, media
+  voto, migliore in campo (§2) · report WhatsApp con un tap (§13) · Team of
+  the Week con grafica campo screenshot-friendly (§7) · prima infornata badge
+  (presenze, gol, MVP, serie vittorie, Saracinesca, Scarso Certificato) su
+  carta e scheda giocatore (§6)
 
 ## v0.9 — "La Stagione"
 
