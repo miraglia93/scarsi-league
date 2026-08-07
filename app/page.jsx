@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 /* ============================================================
-   MONDAY LEAGUE — v0.3 · Next.js + Supabase (dati live)
+   SCARSI LEAGUE — Next.js + Supabase (dati live)
    ============================================================ */
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
