@@ -31,6 +31,56 @@ function RigaFormazione({ p }) {
   );
 }
 
+function buildReportText({ partita, squadre, gol, righe, mvp, media1, media2, golAttribuiti, totGol, leader }) {
+  const righeStruttura = partita.struttura ? ` · ${partita.struttura}` : "";
+  const lines = [`⚽ SCARSI LEAGUE — Calci8Lunedì ${fmtData(partita.data)}${righeStruttura}`];
+  lines.push(`${squadre[0]} ${gol[0]} – ${gol[1]} ${squadre[1]}`);
+  if (mvp) lines.push(`⭐ MVP: ${mvp.nickname || mvp.nome} (voto ${mvp.voto})`);
+
+  const marcatori = righe.filter((r) => r.gol > 0).sort((a, b) => b.gol - a.gol)
+    .map((r) => `${r.nickname || r.nome} x${r.gol}`).join(", ");
+  const parziale = golAttribuiti < totGol ? (marcatori ? ", e altri gol non attribuiti su Fubles" : "") : "";
+  if (marcatori) lines.push(`⚽ Marcatori: ${marcatori}${parziale}`);
+  else if (totGol > 0) lines.push(`⚽ Marcatori: nessuno attribuito su Fubles`);
+
+  lines.push(`📊 Media voto: ${squadre[0]} ${media1 != null ? media1.toFixed(2) : "—"} · ${squadre[1]} ${media2 != null ? media2.toFixed(2) : "—"}`);
+  if (leader) lines.push(`📈 Classifica: ${leader.nome} guida con ${leader.punti} punti`);
+  lines.push(`👉 scarsileague.it`);
+  return lines.join("\n");
+}
+
+function ReportButton({ testo }) {
+  const [stato, setStato] = useState("idle"); // idle | copiato | errore
+
+  const copia = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(testo);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = testo;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setStato("copiato");
+      setTimeout(() => setStato("idle"), 2000);
+    } catch {
+      setStato("errore");
+      setTimeout(() => setStato("idle"), 3000);
+    }
+  };
+
+  return (
+    <button className="mini ok" onClick={copia}>
+      {stato === "copiato" ? "Copiato ✅" : stato === "errore" ? "⚠ Copia manualmente" : "📋 Copia report WhatsApp"}
+    </button>
+  );
+}
+
 export default function Partita() {
   const params = useParams();
   const id = Number(params.id);
@@ -39,6 +89,7 @@ export default function Partita() {
   const [stato, setStato] = useState("verifica");
   const [partita, setPartita] = useState(null);
   const [righe, setRighe] = useState([]);
+  const [leader, setLeader] = useState(null);
   const [errore, setErrore] = useState("");
 
   useEffect(() => {
@@ -80,6 +131,31 @@ export default function Partita() {
           voto: r.voto == null ? null : Number(r.voto),
         };
       }));
+
+      // chi guida la classifica generale della lega (regulars, presenze >= 2)
+      const { data: partiteLega } = await supabase.from("partite").select("id").eq("lega_id", p.lega_id);
+      const idsLega = (partiteLega || []).map((m) => m.id);
+      if (idsLega.length) {
+        const { data: prLega } = await supabase.from("prestazioni")
+          .select("giocatore_id, voto, esito").in("partita_id", idsLega);
+        const agg = {};
+        (prLega || []).forEach((r) => {
+          const s = (agg[r.giocatore_id] = agg[r.giocatore_id] || { presenze: 0, punti: 0, voti: [] });
+          s.presenze++;
+          if (r.esito === "Vittoria") s.punti += 3;
+          else if (r.esito === "Pareggio") s.punti += 1;
+          if (r.voto != null) s.voti.push(Number(r.voto));
+        });
+        const top = Object.entries(agg)
+          .map(([gid, s]) => ({ gid: Number(gid), ...s, media: s.voti.length ? s.voti.reduce((a, b) => a + b, 0) / s.voti.length : 0 }))
+          .filter((s) => s.presenze >= 2)
+          .sort((a, b) => b.punti - a.punti || b.media - a.media)[0];
+        if (top) {
+          const { data: gTop } = await supabase.from("giocatori").select("nome, nickname").eq("id", top.gid).maybeSingle();
+          if (gTop) setLeader({ nome: gTop.nickname || gTop.nome, punti: top.punti });
+        }
+      }
+
       setStato("ok");
     })();
   }, [id]);
@@ -112,6 +188,8 @@ export default function Partita() {
   const media1 = mediaSquadra(squadre[0]);
   const media2 = mediaSquadra(squadre[1]);
 
+  const reportText = buildReportText({ partita, squadre, gol, righe, mvp, media1, media2, golAttribuiti, totGol, leader });
+
   return (
     <div className="wrap">
       <div className="brand">
@@ -127,11 +205,12 @@ export default function Partita() {
         {mvp && <div className="mvpline">⭐ MVP <b>{mvp.nickname || mvp.nome}</b> · voto {mvp.voto ?? "—"}</div>}
       </section>
 
-      {partita.fubles_url && (
-        <div className="note" style={{ textAlign: "center" }}>
+      <div className="reportbar">
+        <ReportButton testo={reportText} />
+        {partita.fubles_url && (
           <a className="plink" href={partita.fubles_url} target="_blank" rel="noreferrer">Vedi su Fubles ↗</a>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="strip">
         <div className="stat"><b>{media1 != null ? media1.toFixed(2) : "—"}</b><span>Media {squadre[0]}</span></div>

@@ -172,3 +172,4 @@ a.hero:hover{border-color:rgba(227,197,103,.4);}
 .formgol{white-space:nowrap;}
 .formvoto{font-family:'Anton';font-size:14px;color:#E3C567;min-width:24px;text-align:right;}
 @media(max-width:420px){.formations{gap:8px;}.formteam{padding:12px 6px;}}
+.reportbar{display:flex;align-items:center;justify-content:center;gap:16px;margin:16px 0 6px;flex-wrap:wrap;}
