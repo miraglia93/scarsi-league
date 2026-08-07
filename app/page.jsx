@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth } from "../lib/engine";
+import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth, distribuzioneVoti, computeAndamento } from "../lib/engine";
 import PlayerCard from "../components/PlayerCard";
 import FormaDots from "../components/FormaDots";
 import MiniTable from "../components/MiniTable";
@@ -49,6 +49,44 @@ function PremiRow({ premi }) {
           {p.emoji || "🏆"} {p.etichetta || p.tipo}
         </span>
       ))}
+    </div>
+  );
+}
+
+function MiniChart({ titolo, valori, colore, confronto }) {
+  const punti = valori.map((v, i) => ({ v, i })).filter((p) => p.v != null);
+  if (punti.length < 2) return null;
+
+  const w = 600, h = 130, pad = 12;
+  const vs = punti.map((p) => p.v);
+  const min = Math.min(...vs), max = Math.max(...vs);
+  const range = max - min || 1;
+  const stepX = punti.length > 1 ? (w - pad * 2) / (punti.length - 1) : 0;
+  const coords = punti.map((p, i) => [
+    pad + i * stepX,
+    pad + (1 - (p.v - min) / range) * (h - pad * 2),
+  ]);
+  const linePath = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L${coords[coords.length - 1][0].toFixed(1)},${h - pad} L${coords[0][0].toFixed(1)},${h - pad} Z`;
+  const gradId = `grad-${titolo.replace(/\s+/g, "")}`;
+
+  return (
+    <div className="chartbox">
+      <h3>{titolo}</h3>
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="chartsvg">
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={colore} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={colore} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill={`url(#${gradId})`} />
+        <path d={linePath} fill="none" stroke={colore} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+        {coords.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={i === coords.length - 1 ? 4.5 : 2.5} fill={colore} />
+        ))}
+      </svg>
+      {confronto && <div className="chartconfronto">{confronto}</div>}
     </div>
   );
 }
@@ -470,6 +508,16 @@ export default function Home() {
   const selFC = selS ? fanCritic(selS.id, VOTES) : null;
   const selBadges = selS ? computeBadges(selS, players) : [];
   const selPremi = selS ? PREMI.filter((p) => p.giocatore_id === selS.id) : [];
+  const { mean: mediaLega, std: stdLega } = distribuzioneVoti(players);
+  const selAndamento = selS ? computeAndamento(selS.storico, mediaLega, stdLega) : [];
+  const confrontoTrend = (chiave, unita, decimali) => {
+    const validi = selAndamento.filter((p) => p[chiave] != null);
+    if (validi.length < 2) return null;
+    const finestra = validi.slice(-5);
+    const primo = finestra[0][chiave], ultimo = finestra[finestra.length - 1][chiave];
+    const dir = ultimo > primo ? unita.su : ultimo < primo ? unita.giu : unita.pari;
+    return `${unita.nome} ${dir} da ${primo.toFixed(decimali)} a ${ultimo.toFixed(decimali)} nelle ultime ${finestra.length} partite`;
+  };
 
   return (
     <div className="wrap">
@@ -721,6 +769,15 @@ export default function Home() {
               </div>
               <BadgeRow badges={selBadges} />
               <PremiRow premi={selPremi} />
+
+              <div className="grid2">
+                <MiniChart titolo="📈 Andamento voto" colore="#E3C567"
+                  valori={selAndamento.map((p) => p.voto)}
+                  confronto={confrontoTrend("voto", { nome: "Media voto", su: "salita", giu: "scesa", pari: "stabile" }, 2)} />
+                <MiniChart titolo="🎯 Andamento overall" colore="#5CBF7A"
+                  valori={selAndamento.map((p) => p.overall)}
+                  confronto={confrontoTrend("overall", { nome: "Overall", su: "salito", giu: "sceso", pari: "stabile" }, 0)} />
+              </div>
 
               {selFC && selFC.nVoti > 0 && selFC.fan && selFC.critic && selFC.fan.votante !== selFC.critic.votante && S[selFC.fan.votante] && S[selFC.critic.votante] && (
                 <div className="insight">
