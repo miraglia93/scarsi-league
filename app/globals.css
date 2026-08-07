@@ -151,3 +151,24 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
 .filelabel{display:inline-block;margin-top:12px;}
 .fut-foto{width:100%;height:110px;object-fit:cover;border-radius:8px;margin:10px 0 6px;
   border:1px solid rgba(232,237,230,.2);}
+
+/* v0.8 — pagina partita */
+a.hero{display:grid;text-decoration:none;color:inherit;}
+a.hero:hover{border-color:rgba(227,197,103,.4);}
+.stat.wide b{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.formations{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:8px;}
+.formteam{background:#121B17;border:1px solid rgba(232,237,230,.08);border-radius:12px;padding:14px 10px;min-width:0;}
+.formteam h3{text-align:center;margin-bottom:10px;}
+.formrow{display:flex;align-items:center;gap:7px;padding:7px 0;border-bottom:1px solid rgba(232,237,230,.06);}
+.formrow:last-child{border-bottom:none;}
+.formfoto{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+.formavatar{width:28px;height:28px;border-radius:50%;background:rgba(232,237,230,.1);color:#E8EDE6;
+  font-family:'Anton';font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.forminfo{display:flex;flex-direction:column;min-width:0;flex:1;}
+.formname{font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.formruolo{font-size:9px;color:#8FA096;letter-spacing:.08em;text-transform:uppercase;}
+.formvals{display:flex;align-items:center;gap:5px;font-size:11px;color:#8FA096;flex-shrink:0;}
+.formmvp{font-size:12px;}
+.formgol{white-space:nowrap;}
+.formvoto{font-family:'Anton';font-size:14px;color:#E3C567;min-width:24px;text-align:right;}
+@media(max-width:420px){.formations{gap:8px;}.formteam{padding:12px 6px;}}

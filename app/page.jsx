@@ -521,7 +521,7 @@ export default function Home() {
 
       {sel == null && view === "home" && (
         <>
-          <section className="hero">
+          <a className="hero" href={`/partita/${last.dbId}`}>
             <span className="lbl">Ultima partita · {last.d}</span>
             <div className="team"><b>{lastTeams[0]}</b><span>forza {last.f[0]}</span></div>
             <div className="score">{last.score[lastTeams[0]]}<span>–</span>{last.score[lastTeams[1]]}</div>
@@ -529,7 +529,7 @@ export default function Home() {
             {last.mvp > 0 && S[last.mvp] && (
               <div className="mvpline">⭐ MVP <b>{S[last.mvp].nome}</b> · voto {last.stats[last.mvp][0]}</div>
             )}
-          </section>
+          </a>
 
           <div className="strip">
             <div className="stat"><b>{MATCHES.length}</b><span>Partite</span></div>
@@ -697,7 +697,7 @@ export default function Home() {
                 </tr></thead>
                 <tbody>
                   {[...selS.storico].reverse().map((r, i) => (
-                    <tr key={i}>
+                    <tr key={i} className="click" onClick={() => { window.location.href = `/partita/${r.match.dbId}`; }}>
                       <td>{r.match.d}</td>
                       <td>{r.team}</td>
                       <td>{r.team} {r.score}</td>
