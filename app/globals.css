@@ -243,3 +243,8 @@ a.hero:hover{border-color:rgba(227,197,103,.4);}
 .hofrow span{color:#8FA096;flex-shrink:0;}
 .hofrow b{color:#E8EDE6;text-align:right;}
 .hofmeta{margin-top:12px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8FA096;text-align:center;}
+
+/* v0.9 — admin: dati partita, premi (input compatti dentro le tabelle) */
+table input[type=number]{width:56px;max-width:56px;padding:5px 6px;margin:0;font-size:13px;text-align:center;}
+table input[type=text]{width:130px;max-width:130px;padding:5px 8px;margin:0;font-size:13px;}
+table input[type=checkbox]{width:auto;margin:0;accent-color:#E3C567;}

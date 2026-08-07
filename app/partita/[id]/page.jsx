@@ -18,6 +18,10 @@ function RigaFormazione({ p }) {
       <div className="formvals">
         {p.motm && <span className="formmvp" title="MVP">⭐</span>}
         {p.gol > 0 && <span className="formgol" title="Gol">⚽ {p.gol}</span>}
+        {p.assist > 0 && <span className="formgol" title="Assist">🅰️ {p.assist}</span>}
+        {p.clean_sheet && <span className="formgol" title="Clean sheet">🧤</span>}
+        {p.cartellini > 0 && <span className="formgol" title="Cartellini">🟨{p.cartellini > 1 ? `×${p.cartellini}` : ""}</span>}
+        {p.autogol > 0 && <span className="formgol" title="Autogol">🙈{p.autogol > 1 ? `×${p.autogol}` : ""}</span>}
         <span className="formvoto">{p.voto != null ? p.voto.toFixed(1) : "—"}</span>
       </div>
     </div>
@@ -105,6 +109,10 @@ export default function Partita() {
       const { data: pr, error: prErr } = await supabase.from("prestazioni").select("*").eq("partita_id", id);
       if (prErr) { setErrore(prErr.message); setStato("errore"); return; }
 
+      const { data: dm } = await supabase.from("dati_manuali").select("*").eq("partita_id", id);
+      const dmMap = {};
+      (dm || []).forEach((d) => { dmMap[d.giocatore_id] = d; });
+
       const ids = [...new Set((pr || []).map((r) => r.giocatore_id))];
       let giocMap = {};
       if (ids.length) {
@@ -115,6 +123,7 @@ export default function Partita() {
 
       setRighe((pr || []).map((r) => {
         const g = giocMap[r.giocatore_id];
+        const d = dmMap[r.giocatore_id];
         return {
           ...r,
           nome: g?.nome || "Giocatore",
@@ -122,6 +131,10 @@ export default function Partita() {
           foto_url: g?.foto_url,
           ruolo: r.ruolo || g?.ruolo_prevalente || "—",
           voto: r.voto == null ? null : Number(r.voto),
+          assist: d?.assist || 0,
+          clean_sheet: !!d?.clean_sheet,
+          cartellini: d?.cartellini || 0,
+          autogol: d?.autogol || 0,
         };
       }));
 
