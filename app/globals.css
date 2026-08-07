@@ -127,7 +127,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
 .legasel{background:#121B17;color:#E8EDE6;border:1px solid rgba(232,237,230,.25);border-radius:8px;
   padding:8px 12px;font-family:'Archivo';font-weight:700;font-size:13px;margin:4px 8px 4px 0;}
 .mini{border:none;border-radius:7px;padding:7px 14px;font-family:'Archivo';font-weight:800;
-  font-size:13px;cursor:pointer;}
+  font-size:13px;cursor:pointer;background:rgba(232,237,230,.12);color:#E8EDE6;}
 .mini.ok{background:#5CBF7A;color:#0B1210;}
 .mini.no{background:#E05C4B;color:#fff;}
 .mini:disabled{opacity:.5;cursor:default;}
@@ -248,3 +248,14 @@ a.hero:hover{border-color:rgba(227,197,103,.4);}
 table input[type=number]{width:56px;max-width:56px;padding:5px 6px;margin:0;font-size:13px;text-align:center;}
 table input[type=text]{width:130px;max-width:130px;padding:5px 8px;margin:0;font-size:13px;}
 table input[type=checkbox]{width:auto;margin:0;accent-color:#E3C567;}
+table input[type=date]{width:150px;padding:5px 8px;margin:0;font-size:13px;}
+table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;}
+
+/* v0.9 — modale di conferma eliminazione */
+.modalback{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;
+  justify-content:center;z-index:50;padding:20px;}
+.modal{background:#121B17;border:1px solid rgba(227,197,103,.3);border-radius:14px;
+  padding:26px;max-width:440px;width:100%;}
+.modal h3{color:#E05C4B;}
+.modal p{font-size:14px;line-height:1.6;color:#C9D2C7;margin:10px 0;}
+.modal input{margin:10px 0;}
