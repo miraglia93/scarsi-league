@@ -5,9 +5,11 @@ import { supabase } from "../../lib/supabaseClient";
 import { tradErroreDb } from "../../lib/engine";
 import { parseImportFubles } from "../../lib/importFubles";
 import AppNav from "../../components/AppNav";
+import SubTabs from "../../components/SubTabs";
 
 export default function Admin() {
   const [stato, setStato] = useState("verifica"); // verifica | no-login | no-admin | ok
+  const [sezioneAdmin, setSezioneAdmin] = useState("partite"); // partite | accessi | struttura | premi | piattaforma
   const [adminLeghe, setAdminLeghe] = useState([]); // lega_id di cui sono admin
   const [adminLegaId, setAdminLegaId] = useState(null); // lega selezionata da gestire ora
   const [superAdmin, setSuperAdmin] = useState(false);
@@ -429,343 +431,379 @@ export default function Admin() {
       )}
       {msg && <div className="note" style={{ marginTop: 12 }}>{msg}</div>}
 
-      <h2>Importa partite</h2>
-      <p className="season">
-        Incolla il testo copiato dai fogli dell&apos;estrazione Fubles (seleziona le celle,
-        incluse le intestazioni, e copia/incolla qui). VOTI_RICEVUTI è opzionale.
-      </p>
-      <div className="betaform">
-        <label className="flabel">PARTITE</label>
-        <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
-          value={importPartiteText} onChange={(e) => { setImportPartiteText(e.target.value); setImportPreview(null); }} />
-        <label className="flabel">PRESTAZIONI_GIOCATORI</label>
-        <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
-          value={importPrestazioniText} onChange={(e) => { setImportPrestazioniText(e.target.value); setImportPreview(null); }} />
-        <label className="flabel">VOTI_RICEVUTI (opzionale)</label>
-        <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
-          value={importVotiText} onChange={(e) => { setImportVotiText(e.target.value); setImportPreview(null); }} />
-        <button className="mini" style={{ marginTop: 10 }} onClick={analizzaImport}
-          disabled={!importPartiteText || !importPrestazioniText}>Analizza</button>
-        {importMsg && <div className="note">{importMsg}</div>}
-        {importPreview && (
-          <>
-            <div className="note">
-              {importPreview.parsed.partite.length - importPreview.nPartiteEsistenti} partite nuove
-              {importPreview.nPartiteEsistenti > 0 && ` (${importPreview.nPartiteEsistenti} già presenti, saltate insieme alle relative prestazioni/voti)`}
-              · {importPreview.nGiocatoriNuovi} giocatori nuovi
-              · {importPreview.nPrestazioni} prestazioni
-              · {importPreview.nVoti} voti
-            </div>
-            {importPreview.parsed.avvisi.map((a, i) => (
-              <div key={i} className="note">⚠ {a}</div>
-            ))}
-            <button className="mini ok" onClick={confermaImport} disabled={importBusy}>
-              {importBusy ? "Importazione…" : "✓ Conferma import"}
-            </button>
-          </>
-        )}
-      </div>
+      <SubTabs active={sezioneAdmin} onSelect={setSezioneAdmin} tabs={[
+        { key: "partite", label: "Partite" },
+        { key: "accessi", label: `Accessi${inAttesa.length ? ` (${inAttesa.length})` : ""}` },
+        { key: "struttura", label: "Lega" },
+        { key: "premi", label: "Premi" },
+        ...(superAdmin ? [{ key: "piattaforma", label: "Piattaforma" }] : []),
+      ]} />
 
-      {superAdmin && (
+      {sezioneAdmin === "partite" && (
         <>
-          <h2>Piattaforma — abbonamenti ({utentiPiattaforma.length})</h2>
-          {utentiPiattaforma.length === 0 ? (
-            <p className="season">Nessuna richiesta di abbonamento ancora.</p>
+          <h2>Importa partite</h2>
+          <p className="season">
+            Incolla il testo copiato dai fogli dell&apos;estrazione Fubles (seleziona le celle,
+            incluse le intestazioni, e copia/incolla qui). VOTI_RICEVUTI è opzionale.
+          </p>
+          <div className="betaform">
+            <label className="flabel">PARTITE</label>
+            <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+              value={importPartiteText} onChange={(e) => { setImportPartiteText(e.target.value); setImportPreview(null); }} />
+            <label className="flabel">PRESTAZIONI_GIOCATORI</label>
+            <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+              value={importPrestazioniText} onChange={(e) => { setImportPrestazioniText(e.target.value); setImportPreview(null); }} />
+            <label className="flabel">VOTI_RICEVUTI (opzionale)</label>
+            <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+              value={importVotiText} onChange={(e) => { setImportVotiText(e.target.value); setImportPreview(null); }} />
+            <button className="mini" style={{ marginTop: 10 }} onClick={analizzaImport}
+              disabled={!importPartiteText || !importPrestazioniText}>Analizza</button>
+            {importMsg && <div className="note">{importMsg}</div>}
+            {importPreview && (
+              <>
+                <div className="note">
+                  {importPreview.parsed.partite.length - importPreview.nPartiteEsistenti} partite nuove
+                  {importPreview.nPartiteEsistenti > 0 && ` (${importPreview.nPartiteEsistenti} già presenti, saltate insieme alle relative prestazioni/voti)`}
+                  · {importPreview.nGiocatoriNuovi} giocatori nuovi
+                  · {importPreview.nPrestazioni} prestazioni
+                  · {importPreview.nVoti} voti
+                </div>
+                {importPreview.parsed.avvisi.map((a, i) => (
+                  <div key={i} className="note">⚠ {a}</div>
+                ))}
+                <button className="mini ok" onClick={confermaImport} disabled={importBusy}>
+                  {importBusy ? "Importazione…" : "✓ Conferma import"}
+                </button>
+              </>
+            )}
+          </div>
+
+          <h2>Partite ({partite.length})</h2>
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead><tr>
+                <th>Data</th><th>Squadre</th><th>Risultato</th><th>Stagione</th><th className="num">Prestazioni</th><th>Azioni</th>
+              </tr></thead>
+              <tbody>
+                {partite.map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.data}</td>
+                    <td className="pname">{p.squadra_1} – {p.squadra_2}</td>
+                    <td className="num">{p.gol_squadra_1}-{p.gol_squadra_2}</td>
+                    <td>
+                      <select value={p.stagione_id ?? ""} disabled={spostaBusy === p.id}
+                        onChange={(e) => spostaPartita(p.id, e.target.value)}>
+                        <option value="">— nessuna —</option>
+                        {stagioni.filter((s) => s.lega_id === p.lega_id).map((s) => (
+                          <option key={s.id} value={s.id}>{s.nome}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="num">{prestazioniConteggio[p.id] || 0}</td>
+                    <td>
+                      <button className="mini no" onClick={() => apriElimina(
+                        "partita", p.id, `${p.data} · ${p.squadra_1} ${p.gol_squadra_1}-${p.gol_squadra_2} ${p.squadra_2}`,
+                      )}>Elimina</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h2>Dati partita</h2>
+          <p className="season">Assist, clean sheet, cartellini, autogol — Fubles non li espone, li inserisci tu.</p>
+          <select value={partitaSelId} onChange={(e) => setPartitaSelId(e.target.value)}>
+            <option value="">— Scegli una partita —</option>
+            {partite.map((p) => <option key={p.id} value={p.id}>{partitaLabel(p)}</option>)}
+          </select>
+
+          {partitaSelId && (
+            datiRighe.length === 0 ? (
+              <p className="season">Nessun partecipante trovato per questa partita.</p>
+            ) : (
+              <>
+                <div style={{ overflowX: "auto" }}>
+                  <table>
+                    <thead><tr>
+                      <th>Giocatore</th><th>Ruolo</th><th className="num">Assist</th><th className="num">Clean sheet</th>
+                      <th className="num">Gol subiti</th><th className="num">Cartellini</th><th className="num">Autogol</th><th>Note</th>
+                    </tr></thead>
+                    <tbody>
+                      {datiRighe.map((r) => (
+                        <tr key={r.giocatore_id}>
+                          <td className="pname">{r.nome}</td>
+                          <td>{r.ruolo}</td>
+                          <td className="num">
+                            <input type="number" min="0" value={r.assist}
+                              onChange={(e) => aggiornaRiga(r.giocatore_id, "assist", e.target.value)} />
+                          </td>
+                          <td className="num">
+                            <input type="checkbox" checked={r.clean_sheet}
+                              onChange={(e) => aggiornaRiga(r.giocatore_id, "clean_sheet", e.target.checked)} />
+                          </td>
+                          <td className="num">
+                            {r.ruolo === "POR"
+                              ? <input type="number" min="0" value={r.gol_subiti}
+                                  onChange={(e) => aggiornaRiga(r.giocatore_id, "gol_subiti", e.target.value)} />
+                              : "—"}
+                          </td>
+                          <td className="num">
+                            <input type="number" min="0" value={r.cartellini}
+                              onChange={(e) => aggiornaRiga(r.giocatore_id, "cartellini", e.target.value)} />
+                          </td>
+                          <td className="num">
+                            <input type="number" min="0" value={r.autogol}
+                              onChange={(e) => aggiornaRiga(r.giocatore_id, "autogol", e.target.value)} />
+                          </td>
+                          <td>
+                            <input type="text" value={r.note}
+                              onChange={(e) => aggiornaRiga(r.giocatore_id, "note", e.target.value)} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button className="mini ok" style={{ marginTop: 12 }} onClick={salvaDati} disabled={datiBusy}>
+                  {datiBusy ? "Salvataggio…" : "💾 Salva dati partita"}
+                </button>
+                {datiMsg && <div className="note">{datiMsg}</div>}
+              </>
+            )
+          )}
+        </>
+      )}
+
+      {sezioneAdmin === "accessi" && (
+        <>
+          <h2>Richieste in attesa ({inAttesa.length})</h2>
+          {inAttesa.length === 0 ? (
+            <p className="season">Nessuna richiesta — tutto tranquillo 😌</p>
           ) : (
             <table>
-              <thead><tr><th>Email</th><th>Piano</th><th>Abbonamento</th><th>Dal</th><th></th></tr></thead>
+              <thead><tr><th>Email</th><th>Nome</th><th>Messaggio</th><th>Quando</th><th>Azioni</th></tr></thead>
               <tbody>
-                {utentiPiattaforma.map((u) => (
-                  <tr key={u.email}>
-                    <td>{u.email}</td>
-                    <td>{u.piano}{u.super_admin ? " · super admin" : ""}</td>
-                    <td>{u.abbonamento_attivo ? "🟢 attivo" : "⚪ non attivo"}</td>
-                    <td>{new Date(u.creato_il).toLocaleDateString("it-IT")}</td>
+                {inAttesa.map((r) => (
+                  <tr key={r.email}>
+                    <td>{r.email}</td>
+                    <td className="pname">{r.nome}</td>
+                    <td>{r.messaggio || "—"}</td>
+                    <td>{new Date(r.richiesta_il).toLocaleDateString("it-IT")}</td>
                     <td>
-                      {u.abbonamento_attivo
-                        ? <button className="mini no" onClick={() => toggleAbbonamento(u.email, false)}>Disattiva</button>
-                        : <button className="mini ok" onClick={() => toggleAbbonamento(u.email, true)}>Attiva</button>}
+                      <button className="mini ok" onClick={() => azione("approva_richiesta", r.email)}>✓ Approva</button>{" "}
+                      <button className="mini no" onClick={() => azione("rifiuta_richiesta", r.email)}>✗ Rifiuta</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
-        </>
-      )}
 
-      <h2>Richieste in attesa ({inAttesa.length})</h2>
-      {inAttesa.length === 0 ? (
-        <p className="season">Nessuna richiesta — tutto tranquillo 😌</p>
-      ) : (
-        <table>
-          <thead><tr><th>Email</th><th>Nome</th><th>Messaggio</th><th>Quando</th><th>Azioni</th></tr></thead>
-          <tbody>
-            {inAttesa.map((r) => (
-              <tr key={r.email}>
-                <td>{r.email}</td>
-                <td className="pname">{r.nome}</td>
-                <td>{r.messaggio || "—"}</td>
-                <td>{new Date(r.richiesta_il).toLocaleDateString("it-IT")}</td>
-                <td>
-                  <button className="mini ok" onClick={() => azione("approva_richiesta", r.email)}>✓ Approva</button>{" "}
-                  <button className="mini no" onClick={() => azione("rifiuta_richiesta", r.email)}>✗ Rifiuta</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+          <h2>Membri ({membri.length})</h2>
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead><tr><th>Email</th><th>Nome</th><th>Ruolo</th><th>Scheda</th><th>Dal</th><th></th></tr></thead>
+              <tbody>
+                {membri.map((m) => (
+                  <tr key={m.email}>
+                    <td>{m.email}</td>
+                    <td className="pname">{m.nome || "—"}</td>
+                    <td>{m.ruolo === "admin" ? "👑 admin" : "membro"}</td>
+                    <td>{m.giocatore_id ? `#${m.giocatore_id}` : "—"}</td>
+                    <td>{new Date(m.aggiunto_il).toLocaleDateString("it-IT")}</td>
+                    <td>{m.ruolo !== "admin" && (
+                      <button className="mini no" onClick={() => revoca(m.email)}>Revoca</button>
+                    )}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-      <h2>Membri ({membri.length})</h2>
-      <table>
-        <thead><tr><th>Email</th><th>Nome</th><th>Ruolo</th><th>Scheda</th><th>Dal</th><th></th></tr></thead>
-        <tbody>
-          {membri.map((m) => (
-            <tr key={m.email}>
-              <td>{m.email}</td>
-              <td className="pname">{m.nome || "—"}</td>
-              <td>{m.ruolo === "admin" ? "👑 admin" : "membro"}</td>
-              <td>{m.giocatore_id ? `#${m.giocatore_id}` : "—"}</td>
-              <td>{new Date(m.aggiunto_il).toLocaleDateString("it-IT")}</td>
-              <td>{m.ruolo !== "admin" && (
-                <button className="mini no" onClick={() => revoca(m.email)}>Revoca</button>
-              )}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {gestite.length > 0 && (
-        <>
-          <h2>Storico richieste</h2>
-          <table>
-            <thead><tr><th>Email</th><th>Nome</th><th>Stato</th></tr></thead>
-            <tbody>
-              {gestite.map((r) => (
-                <tr key={r.email}>
-                  <td>{r.email}</td><td>{r.nome}</td>
-                  <td>{r.stato === "approvata" ? "✅ approvata" : "❌ rifiutata"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
-
-      <h2>Leghe ({leghe.length})</h2>
-      <table>
-        <thead><tr><th>#</th><th>Nome</th><th>Slug</th><th>Struttura</th></tr></thead>
-        <tbody>
-          {leghe.map((l) => (
-            <tr key={l.id}>
-              <td className="rank">{l.id}</td><td className="pname">{l.nome}</td>
-              <td>{l.slug}</td><td>{l.struttura || "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="betaform">
-        <h3>Crea nuova lega (beta)</h3>
-        <input placeholder="Nome — es. Champions del Giovedì" value={nomeLega} onChange={(e) => setNomeLega(e.target.value)} />
-        <input placeholder="Slug — es. champions-giovedi" value={slugLega} onChange={(e) => setSlugLega(e.target.value)} />
-        <button className="mini ok" onClick={creaLega} disabled={!nomeLega || !slugLega}>+ Crea lega</button>
-      </div>
-
-      <h2>Stagioni ({stagioni.length})</h2>
-      <table>
-        <thead><tr>
-          <th>Nome</th><th>Inizio</th><th>Fine</th><th>Stato</th><th className="num">Partite</th><th>Azioni</th>
-        </tr></thead>
-        <tbody>
-          {stagioni.map((s) => {
-            const mod = stagioneModifiche[s.id] || {};
-            const nPartite = partiteCountByStagione[s.id] || 0;
-            const busy = stagioneBusy === s.id;
-            return (
-              <tr key={s.id}>
-                <td><input type="text" value={mod.nome ?? s.nome}
-                  onChange={(e) => modificaStagioneCampo(s.id, "nome", e.target.value)} /></td>
-                <td>{s.inizio}</td>
-                <td><input type="date" value={mod.fine ?? s.fine ?? ""}
-                  onChange={(e) => modificaStagioneCampo(s.id, "fine", e.target.value)} /></td>
-                <td>{s.attiva ? "🟢 attiva" : "conclusa"}</td>
-                <td className="num">{nPartite}</td>
-                <td style={{ whiteSpace: "nowrap" }}>
-                  <button className="mini ok" disabled={busy || !stagioneModifiche[s.id]} onClick={() => salvaStagione(s)}>💾</button>{" "}
-                  {!s.attiva && <button className="mini" disabled={busy} onClick={() => impostaAttiva(s)}>Imposta attiva</button>}{" "}
-                  {!s.fine && <button className="mini" disabled={busy} onClick={() => chiudiStagione(s)}>Chiudi</button>}{" "}
-                  <button className="mini no" disabled={nPartite > 0}
-                    title={nPartite > 0 ? "Sposta o elimina prima le partite collegate" : ""}
-                    onClick={() => apriElimina("stagione", s.id, s.nome)}>Elimina</button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      <div className="betaform">
-        <h3>Crea nuova stagione</h3>
-        <select value={nuovaStagioneLega} onChange={(e) => setNuovaStagioneLega(e.target.value)}>
-          <option value="">— Lega —</option>
-          {leghe.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
-        </select>
-        <input placeholder="Nome — es. 2027/28" value={nuovaStagioneNome} onChange={(e) => setNuovaStagioneNome(e.target.value)} />
-        <label className="flabel">Data inizio</label>
-        <input type="date" value={nuovaStagioneInizio} onChange={(e) => setNuovaStagioneInizio(e.target.value)} />
-        <label className="flabel">Data fine (opzionale)</label>
-        <input type="date" value={nuovaStagioneFine} onChange={(e) => setNuovaStagioneFine(e.target.value)} />
-        <button className="mini ok" style={{ marginTop: 10 }} onClick={creaStagione}
-          disabled={!nuovaStagioneLega || !nuovaStagioneNome || !nuovaStagioneInizio}>+ Crea stagione</button>
-      </div>
-
-      <h2>Partite ({partite.length})</h2>
-      <div style={{ overflowX: "auto" }}>
-        <table>
-          <thead><tr>
-            <th>Data</th><th>Squadre</th><th>Risultato</th><th>Stagione</th><th className="num">Prestazioni</th><th>Azioni</th>
-          </tr></thead>
-          <tbody>
-            {partite.map((p) => (
-              <tr key={p.id}>
-                <td>{p.data}</td>
-                <td className="pname">{p.squadra_1} – {p.squadra_2}</td>
-                <td className="num">{p.gol_squadra_1}-{p.gol_squadra_2}</td>
-                <td>
-                  <select value={p.stagione_id ?? ""} disabled={spostaBusy === p.id}
-                    onChange={(e) => spostaPartita(p.id, e.target.value)}>
-                    <option value="">— nessuna —</option>
-                    {stagioni.filter((s) => s.lega_id === p.lega_id).map((s) => (
-                      <option key={s.id} value={s.id}>{s.nome}</option>
+          {gestite.length > 0 && (
+            <>
+              <h2>Storico richieste</h2>
+              <div style={{ overflowX: "auto" }}>
+                <table>
+                  <thead><tr><th>Email</th><th>Nome</th><th>Stato</th></tr></thead>
+                  <tbody>
+                    {gestite.map((r) => (
+                      <tr key={r.email}>
+                        <td>{r.email}</td><td>{r.nome}</td>
+                        <td>{r.stato === "approvata" ? "✅ approvata" : "❌ rifiutata"}</td>
+                      </tr>
                     ))}
-                  </select>
-                </td>
-                <td className="num">{prestazioniConteggio[p.id] || 0}</td>
-                <td>
-                  <button className="mini no" onClick={() => apriElimina(
-                    "partita", p.id, `${p.data} · ${p.squadra_1} ${p.gol_squadra_1}-${p.gol_squadra_2} ${p.squadra_2}`,
-                  )}>Elimina</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </>
+      )}
 
-      <h2>Dati partita</h2>
-      <p className="season">Assist, clean sheet, cartellini, autogol — Fubles non li espone, li inserisci tu.</p>
-      <select value={partitaSelId} onChange={(e) => setPartitaSelId(e.target.value)}>
-        <option value="">— Scegli una partita —</option>
-        {partite.map((p) => <option key={p.id} value={p.id}>{partitaLabel(p)}</option>)}
-      </select>
+      {sezioneAdmin === "struttura" && (
+        <>
+          <h2>Leghe ({leghe.length})</h2>
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead><tr><th>#</th><th>Nome</th><th>Slug</th><th>Struttura</th></tr></thead>
+              <tbody>
+                {leghe.map((l) => (
+                  <tr key={l.id}>
+                    <td className="rank">{l.id}</td><td className="pname">{l.nome}</td>
+                    <td>{l.slug}</td><td>{l.struttura || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="betaform">
+            <h3>Crea nuova lega (beta)</h3>
+            <input placeholder="Nome — es. Champions del Giovedì" value={nomeLega} onChange={(e) => setNomeLega(e.target.value)} />
+            <input placeholder="Slug — es. champions-giovedi" value={slugLega} onChange={(e) => setSlugLega(e.target.value)} />
+            <button className="mini ok" onClick={creaLega} disabled={!nomeLega || !slugLega}>+ Crea lega</button>
+          </div>
 
-      {partitaSelId && (
-        datiRighe.length === 0 ? (
-          <p className="season">Nessun partecipante trovato per questa partita.</p>
-        ) : (
-          <>
+          <h2>Stagioni ({stagioni.length})</h2>
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead><tr>
+                <th>Nome</th><th>Inizio</th><th>Fine</th><th>Stato</th><th className="num">Partite</th><th>Azioni</th>
+              </tr></thead>
+              <tbody>
+                {stagioni.map((s) => {
+                  const mod = stagioneModifiche[s.id] || {};
+                  const nPartite = partiteCountByStagione[s.id] || 0;
+                  const busy = stagioneBusy === s.id;
+                  return (
+                    <tr key={s.id}>
+                      <td><input type="text" value={mod.nome ?? s.nome}
+                        onChange={(e) => modificaStagioneCampo(s.id, "nome", e.target.value)} /></td>
+                      <td>{s.inizio}</td>
+                      <td><input type="date" value={mod.fine ?? s.fine ?? ""}
+                        onChange={(e) => modificaStagioneCampo(s.id, "fine", e.target.value)} /></td>
+                      <td>{s.attiva ? "🟢 attiva" : "conclusa"}</td>
+                      <td className="num">{nPartite}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <button className="mini ok" disabled={busy || !stagioneModifiche[s.id]} onClick={() => salvaStagione(s)}>💾</button>{" "}
+                        {!s.attiva && <button className="mini" disabled={busy} onClick={() => impostaAttiva(s)}>Imposta attiva</button>}{" "}
+                        {!s.fine && <button className="mini" disabled={busy} onClick={() => chiudiStagione(s)}>Chiudi</button>}{" "}
+                        <button className="mini no" disabled={nPartite > 0}
+                          title={nPartite > 0 ? "Sposta o elimina prima le partite collegate" : ""}
+                          onClick={() => apriElimina("stagione", s.id, s.nome)}>Elimina</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="betaform">
+            <h3>Crea nuova stagione</h3>
+            <select value={nuovaStagioneLega} onChange={(e) => setNuovaStagioneLega(e.target.value)}>
+              <option value="">— Lega —</option>
+              {leghe.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
+            </select>
+            <input placeholder="Nome — es. 2027/28" value={nuovaStagioneNome} onChange={(e) => setNuovaStagioneNome(e.target.value)} />
+            <label className="flabel">Data inizio</label>
+            <input type="date" value={nuovaStagioneInizio} onChange={(e) => setNuovaStagioneInizio(e.target.value)} />
+            <label className="flabel">Data fine (opzionale)</label>
+            <input type="date" value={nuovaStagioneFine} onChange={(e) => setNuovaStagioneFine(e.target.value)} />
+            <button className="mini ok" style={{ marginTop: 10 }} onClick={creaStagione}
+              disabled={!nuovaStagioneLega || !nuovaStagioneNome || !nuovaStagioneInizio}>+ Crea stagione</button>
+          </div>
+        </>
+      )}
+
+      {sezioneAdmin === "premi" && (
+        <>
+          <h2>Premi</h2>
+          <div className="betaform">
+            <h3>Assegna un premio</h3>
+            <select value={premioGiocatore} onChange={(e) => setPremioGiocatore(e.target.value)}>
+              <option value="">— Giocatore —</option>
+              {giocatori.map((g) => <option key={g.id} value={g.id}>{g.nickname || g.nome}</option>)}
+            </select>
+            <input placeholder='Tipo — es. "miglior_portiere", "gol_del_mese"' value={premioTipo} onChange={(e) => setPremioTipo(e.target.value)} />
+            <select value={premioPeriodo} onChange={(e) => setPremioPeriodo(e.target.value)}>
+              <option value="partita">Partita</option>
+              <option value="mese">Mese</option>
+              <option value="stagione">Stagione</option>
+            </select>
+            {premioPeriodo === "partita" && (
+              <select value={premioPartitaId} onChange={(e) => setPremioPartitaId(e.target.value)}>
+                <option value="">— Partita —</option>
+                {partite.map((p) => <option key={p.id} value={p.id}>{partitaLabel(p)}</option>)}
+              </select>
+            )}
+            {(premioPeriodo === "stagione" || premioPeriodo === "mese") && (
+              <select value={premioStagioneId} onChange={(e) => setPremioStagioneId(e.target.value)}>
+                <option value="">— Stagione —</option>
+                {stagioni.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+              </select>
+            )}
+            <input placeholder='Etichetta mostrata — es. "MVP di Settembre"' value={premioEtichetta} onChange={(e) => setPremioEtichetta(e.target.value)} />
+            <input placeholder="Emoji (opzionale) — es. 🧤" value={premioEmoji} onChange={(e) => setPremioEmoji(e.target.value)} style={{ maxWidth: 120 }} />
+            <button className="mini ok" style={{ marginTop: 10 }} onClick={assegnaPremio}>+ Assegna premio</button>
+            {premioMsg && <div className="note">{premioMsg}</div>}
+          </div>
+
+          <h3 style={{ marginTop: 24 }}>Premi assegnati ({premiList.length})</h3>
+          {premiList.length === 0 ? (
+            <p className="season">Nessun premio assegnato ancora.</p>
+          ) : (
             <div style={{ overflowX: "auto" }}>
               <table>
-                <thead><tr>
-                  <th>Giocatore</th><th>Ruolo</th><th className="num">Assist</th><th className="num">Clean sheet</th>
-                  <th className="num">Gol subiti</th><th className="num">Cartellini</th><th className="num">Autogol</th><th>Note</th>
-                </tr></thead>
+                <thead><tr><th>Giocatore</th><th>Etichetta</th><th>Periodo</th><th>Quando</th><th></th></tr></thead>
                 <tbody>
-                  {datiRighe.map((r) => (
-                    <tr key={r.giocatore_id}>
-                      <td className="pname">{r.nome}</td>
-                      <td>{r.ruolo}</td>
-                      <td className="num">
-                        <input type="number" min="0" value={r.assist}
-                          onChange={(e) => aggiornaRiga(r.giocatore_id, "assist", e.target.value)} />
-                      </td>
-                      <td className="num">
-                        <input type="checkbox" checked={r.clean_sheet}
-                          onChange={(e) => aggiornaRiga(r.giocatore_id, "clean_sheet", e.target.checked)} />
-                      </td>
-                      <td className="num">
-                        {r.ruolo === "POR"
-                          ? <input type="number" min="0" value={r.gol_subiti}
-                              onChange={(e) => aggiornaRiga(r.giocatore_id, "gol_subiti", e.target.value)} />
-                          : "—"}
-                      </td>
-                      <td className="num">
-                        <input type="number" min="0" value={r.cartellini}
-                          onChange={(e) => aggiornaRiga(r.giocatore_id, "cartellini", e.target.value)} />
-                      </td>
-                      <td className="num">
-                        <input type="number" min="0" value={r.autogol}
-                          onChange={(e) => aggiornaRiga(r.giocatore_id, "autogol", e.target.value)} />
-                      </td>
+                  {premiList.map((p) => {
+                    const g = giocatori.find((x) => x.id === p.giocatore_id);
+                    return (
+                      <tr key={p.id}>
+                        <td className="pname">{g?.nickname || g?.nome || "—"}</td>
+                        <td>{p.emoji ? `${p.emoji} ` : ""}{p.etichetta || p.tipo}</td>
+                        <td>{p.periodo || "—"}</td>
+                        <td>{new Date(p.assegnato_il).toLocaleDateString("it-IT")}</td>
+                        <td><button className="mini no" onClick={() => rimuoviPremio(p.id)}>Rimuovi</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {sezioneAdmin === "piattaforma" && superAdmin && (
+        <>
+          <h2>Piattaforma — abbonamenti ({utentiPiattaforma.length})</h2>
+          {utentiPiattaforma.length === 0 ? (
+            <p className="season">Nessuna richiesta di abbonamento ancora.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead><tr><th>Email</th><th>Piano</th><th>Abbonamento</th><th>Dal</th><th></th></tr></thead>
+                <tbody>
+                  {utentiPiattaforma.map((u) => (
+                    <tr key={u.email}>
+                      <td>{u.email}</td>
+                      <td>{u.piano}{u.super_admin ? " · super admin" : ""}</td>
+                      <td>{u.abbonamento_attivo ? "🟢 attivo" : "⚪ non attivo"}</td>
+                      <td>{new Date(u.creato_il).toLocaleDateString("it-IT")}</td>
                       <td>
-                        <input type="text" value={r.note}
-                          onChange={(e) => aggiornaRiga(r.giocatore_id, "note", e.target.value)} />
+                        {u.abbonamento_attivo
+                          ? <button className="mini no" onClick={() => toggleAbbonamento(u.email, false)}>Disattiva</button>
+                          : <button className="mini ok" onClick={() => toggleAbbonamento(u.email, true)}>Attiva</button>}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <button className="mini ok" style={{ marginTop: 12 }} onClick={salvaDati} disabled={datiBusy}>
-              {datiBusy ? "Salvataggio…" : "💾 Salva dati partita"}
-            </button>
-            {datiMsg && <div className="note">{datiMsg}</div>}
-          </>
-        )
-      )}
-
-      <h2>Premi</h2>
-      <div className="betaform">
-        <h3>Assegna un premio</h3>
-        <select value={premioGiocatore} onChange={(e) => setPremioGiocatore(e.target.value)}>
-          <option value="">— Giocatore —</option>
-          {giocatori.map((g) => <option key={g.id} value={g.id}>{g.nickname || g.nome}</option>)}
-        </select>
-        <input placeholder='Tipo — es. "miglior_portiere", "gol_del_mese"' value={premioTipo} onChange={(e) => setPremioTipo(e.target.value)} />
-        <select value={premioPeriodo} onChange={(e) => setPremioPeriodo(e.target.value)}>
-          <option value="partita">Partita</option>
-          <option value="mese">Mese</option>
-          <option value="stagione">Stagione</option>
-        </select>
-        {premioPeriodo === "partita" && (
-          <select value={premioPartitaId} onChange={(e) => setPremioPartitaId(e.target.value)}>
-            <option value="">— Partita —</option>
-            {partite.map((p) => <option key={p.id} value={p.id}>{partitaLabel(p)}</option>)}
-          </select>
-        )}
-        {(premioPeriodo === "stagione" || premioPeriodo === "mese") && (
-          <select value={premioStagioneId} onChange={(e) => setPremioStagioneId(e.target.value)}>
-            <option value="">— Stagione —</option>
-            {stagioni.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-          </select>
-        )}
-        <input placeholder='Etichetta mostrata — es. "MVP di Settembre"' value={premioEtichetta} onChange={(e) => setPremioEtichetta(e.target.value)} />
-        <input placeholder="Emoji (opzionale) — es. 🧤" value={premioEmoji} onChange={(e) => setPremioEmoji(e.target.value)} style={{ maxWidth: 120 }} />
-        <button className="mini ok" style={{ marginTop: 10 }} onClick={assegnaPremio}>+ Assegna premio</button>
-        {premioMsg && <div className="note">{premioMsg}</div>}
-      </div>
-
-      <h3 style={{ marginTop: 24 }}>Premi assegnati ({premiList.length})</h3>
-      {premiList.length === 0 ? (
-        <p className="season">Nessun premio assegnato ancora.</p>
-      ) : (
-        <table>
-          <thead><tr><th>Giocatore</th><th>Etichetta</th><th>Periodo</th><th>Quando</th><th></th></tr></thead>
-          <tbody>
-            {premiList.map((p) => {
-              const g = giocatori.find((x) => x.id === p.giocatore_id);
-              return (
-                <tr key={p.id}>
-                  <td className="pname">{g?.nickname || g?.nome || "—"}</td>
-                  <td>{p.emoji ? `${p.emoji} ` : ""}{p.etichetta || p.tipo}</td>
-                  <td>{p.periodo || "—"}</td>
-                  <td>{new Date(p.assegnato_il).toLocaleDateString("it-IT")}</td>
-                  <td><button className="mini no" onClick={() => rimuoviPremio(p.id)}>Rimuovi</button></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+          )}
+        </>
       )}
 
       {eliminaTarget && (
