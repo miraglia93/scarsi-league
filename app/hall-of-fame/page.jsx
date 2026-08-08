@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { assemble, buildStats } from "../../lib/engine";
+import AppNav from "../../components/AppNav";
+import SubTabs from "../../components/SubTabs";
 
 export default function HallOfFame() {
   // verifica | no-login | no-consenso | no-membro | errore | ok
@@ -81,11 +83,18 @@ export default function HallOfFame() {
   });
 
   return (
-    <div className="wrap">
+    <>
+      <AppNav active="lega" />
+      <div className="wrap navpad">
       <div className="brand">
         <h1>Hall of <em>Fame</em></h1>
         <span className="season"><a className="plink" href="/">← Torna a Scarsi League</a></span>
       </div>
+      <SubTabs active="hof" tabs={[
+        { key: "panoramica", label: "Panoramica", href: "/?sezione=lega" },
+        { key: "totw", label: "Team of the Week", href: "/?sezione=lega&sub=totw" },
+        { key: "hof", label: "Hall of Fame", href: "/hall-of-fame" },
+      ]} />
       {leghe.length > 1 && (
         <select className="legasel" style={{ marginTop: 16 }} value={legaId ?? ""} onChange={(e) => setLegaId(Number(e.target.value))}>
           {leghe.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
@@ -114,6 +123,7 @@ export default function HallOfFame() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

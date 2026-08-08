@@ -276,3 +276,102 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
   padding:14px 16px 12px;}
 .chartsvg{width:100%;height:auto;display:block;}
 .chartconfronto{margin-top:8px;font-size:12px;color:#C9D2C7;}
+
+/* v1.0 — nav a due livelli */
+.topbar{display:none;}
+.bottombar{display:flex;}
+@media(min-width:720px){
+  .topbar{display:flex;}
+  .bottombar{display:none;}
+}
+
+.topbar{align-items:center;gap:2px;padding:0 24px;height:64px;
+  border-bottom:1px solid rgba(232,237,230,.08);position:sticky;top:0;background:#0B1210;z-index:20;}
+.tb-brand{font-family:'Anton';font-size:18px;margin-right:24px;white-space:nowrap;color:#E8EDE6;
+  text-decoration:none;}
+.tb-brand em{font-style:normal;color:#E3C567;}
+.topbar a{position:relative;display:flex;align-items:center;gap:8px;padding:0 15px;height:64px;
+  color:#7E8B83;font-weight:700;font-size:13px;text-decoration:none;letter-spacing:.02em;
+  transition:color .18s;}
+.topbar a:hover{color:#C9D2C7;}
+.topbar a.on{color:#E3C567;}
+.topbar a.on:after{content:"";position:absolute;left:13px;right:13px;bottom:0;height:3px;
+  background:#E3C567;border-radius:3px 3px 0 0;box-shadow:0 0 10px rgba(227,197,103,.5);}
+.tb-spacer{flex:1;}
+.tb-hex{width:36px;height:36px;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  background:linear-gradient(160deg,#4A3D18,#241E0C);border:1.5px solid rgba(227,197,103,.5);
+  color:#F5E9C0;font-family:'Anton';font-size:12px;display:flex;align-items:center;justify-content:center;}
+.topbar a.tb-avatar{padding:0;height:auto;}
+.topbar a.tb-avatar.on .tb-hex{border-color:#E3C567;}
+.topbar a.tb-avatar.on:after{display:none;}
+
+.bottombar{position:fixed;left:0;right:0;bottom:0;z-index:30;
+  background:linear-gradient(180deg,#111A16,#0B1210);border-top:1px solid rgba(232,237,230,.08);
+  padding:8px 2px calc(8px + env(safe-area-inset-bottom,0px));}
+.bottombar a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  color:#7E8B83;text-decoration:none;min-height:44px;justify-content:center;position:relative;}
+.bottombar a.on{color:#E3C567;}
+.bb-icwrap{position:relative;width:24px;height:24px;display:flex;align-items:center;justify-content:center;}
+.bottombar a.on .bb-icwrap:before{content:"";position:absolute;inset:-8px;
+  background:radial-gradient(circle,rgba(227,197,103,.25),transparent 70%);}
+.bb-dot{position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:4px;height:4px;
+  border-radius:50%;background:#E3C567;box-shadow:0 0 6px rgba(227,197,103,.8);}
+.bb-label{font-size:10px;font-weight:700;}
+
+@media(max-width:719px){.navpad{padding-bottom:88px;}}
+
+.subtabs{display:flex;gap:8px;overflow-x:auto;padding:14px 0 6px;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;}
+.subtabs::-webkit-scrollbar{display:none;}
+.subtabs button,.subtabs a{flex-shrink:0;padding:7px 15px;border-radius:20px;font-size:12px;
+  font-weight:700;color:#8FA096;background:#121B17;border:none;cursor:pointer;text-decoration:none;
+  font-family:'Archivo';min-height:32px;}
+.subtabs button.on,.subtabs a.on{color:#0B1210;background:#E3C567;}
+
+.ctxstrip{display:flex;align-items:center;gap:12px;margin:2px 0 18px;padding:9px 16px 9px 14px;
+  background:linear-gradient(90deg,rgba(227,197,103,.1),transparent 70%);
+  border-left:3px solid #E3C567;border-radius:0 8px 8px 0;font-size:12px;color:#8FA096;flex-wrap:wrap;}
+.ctxstrip b{color:#E3C567;font-family:'Anton';font-size:13px;letter-spacing:.03em;font-weight:400;}
+.ctxstrip select{margin-left:auto;background:#121B17;color:#E8EDE6;border:1px solid rgba(232,237,230,.2);
+  border-radius:6px;padding:5px 8px;font-size:12px;}
+.ctxstrip select.ctx-stagione{margin-left:0;background:none;border:none;color:#E3C567;
+  font-family:'Anton';font-size:13px;letter-spacing:.03em;font-weight:400;padding:0;
+  -webkit-appearance:none;appearance:none;cursor:pointer;}
+
+/* v1.0 — bacheca "Tu" */
+.tucard{background:linear-gradient(160deg,#2E2708,#171408);border:1.5px solid #E3C567;
+  border-radius:14px;padding:16px;display:flex;gap:14px;align-items:center;margin-bottom:8px;}
+.tucard .badge{width:56px;height:56px;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  background:linear-gradient(160deg,#4A3D18,#241E0C);border:1.5px solid #E3C567;display:flex;
+  align-items:center;justify-content:center;font-family:'Anton';font-size:17px;color:#F5E9C0;
+  flex-shrink:0;overflow:hidden;}
+.tucard .badge img{width:100%;height:100%;object-fit:cover;}
+.tucard .info{flex:1;min-width:0;}
+.tucard .info .lvl{font-family:'Anton';font-size:16px;color:#F5E9C0;letter-spacing:.02em;}
+.tucard .bar{height:6px;border-radius:4px;background:rgba(0,0,0,.4);margin-top:7px;overflow:hidden;}
+.tucard .bar i{display:block;height:100%;background:linear-gradient(90deg,#C9B458,#E3C567);
+  font-style:normal;}
+.tucard .xp{font-size:10px;color:#C9BC8D;margin-top:4px;letter-spacing:.02em;}
+.menulist{margin-top:18px;}
+.menu-item{display:flex;align-items:center;gap:12px;padding:14px 4px;
+  border-bottom:1px solid rgba(232,237,230,.06);font-size:14px;color:#C9D2C7;text-decoration:none;
+  background:none;border-left:none;border-right:none;border-top:none;width:100%;text-align:left;
+  cursor:pointer;font-family:'Archivo';min-height:44px;}
+.menu-item svg{color:#8FA096;flex-shrink:0;}
+.menu-item.danger{color:#E88;}
+.menu-item .hint{margin-left:auto;font-size:10px;color:#5F6862;}
+
+/* v1.0 — elenco partite */
+.matchlist{display:flex;flex-direction:column;gap:10px;}
+.matchcard{display:flex;align-items:center;gap:14px;background:#121B17;
+  border:1px solid rgba(232,237,230,.08);border-radius:12px;padding:14px 16px;text-decoration:none;
+  color:#E8EDE6;min-height:44px;}
+.matchcard:hover{border-color:rgba(227,197,103,.35);}
+.matchcard .mc-data{font-size:11px;color:#8FA096;letter-spacing:.06em;text-transform:uppercase;
+  width:64px;flex-shrink:0;}
+.matchcard .mc-mid{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;
+  font-family:'Anton';font-size:15px;text-transform:uppercase;min-width:0;}
+.matchcard .mc-mid span:nth-child(2){color:#E3C567;font-size:18px;flex-shrink:0;}
+.matchcard .mc-mid span:nth-child(1),.matchcard .mc-mid span:nth-child(3){overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+.matchcard .mc-arrow{color:#5F6862;flex-shrink:0;}

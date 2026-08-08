@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import AppNav from "../../components/AppNav";
 
 export default function Profilo() {
   const [stato, setStato] = useState("verifica"); // verifica | no-login | no-membro | ok
@@ -94,10 +95,12 @@ export default function Profilo() {
   const liberi = giocatori.filter((g) => !claimed.includes(g.id));
 
   return (
-    <div className="wrap" style={{ maxWidth: 720 }}>
+    <>
+      <AppNav active="tu" />
+      <div className="wrap navpad" style={{ maxWidth: 720 }}>
       <div className="brand">
         <h1>Il tuo <em>Profilo</em></h1>
-        <span className="season"><a className="plink" href="/">← Torna a Scarsi League</a></span>
+        <span className="season"><a className="plink" href="/?sezione=tu">← Torna alla bacheca</a></span>
       </div>
       <p className="season" style={{ marginTop: 8 }}>{me.email} {me.ruolo === "admin" && "· 👑 admin"}</p>
       {msg && <div className="note" style={{ marginTop: 10 }}>{msg}</div>}
@@ -149,6 +152,7 @@ export default function Profilo() {
           </p>
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }

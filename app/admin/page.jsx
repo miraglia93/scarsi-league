@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import AppNav from "../../components/AppNav";
 
 export default function Admin() {
   const [stato, setStato] = useState("verifica"); // verifica | no-login | no-admin | ok
@@ -297,10 +298,12 @@ export default function Admin() {
   partite.forEach((p) => { if (p.stagione_id) partiteCountByStagione[p.stagione_id] = (partiteCountByStagione[p.stagione_id] || 0) + 1; });
 
   return (
-    <div className="wrap">
+    <>
+      <AppNav active="tu" />
+      <div className="wrap navpad">
       <div className="brand">
         <h1>Pannello <em>Admin</em></h1>
-        <span className="season"><a className="plink" href="/">← Torna a Scarsi League</a></span>
+        <span className="season"><a className="plink" href="/?sezione=tu">← Torna alla bacheca</a></span>
       </div>
       {msg && <div className="note" style={{ marginTop: 12 }}>{msg}</div>}
 
@@ -606,6 +609,7 @@ export default function Admin() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

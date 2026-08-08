@@ -6,12 +6,17 @@ import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCri
 import PlayerCard from "../components/PlayerCard";
 import FormaDots from "../components/FormaDots";
 import MiniTable from "../components/MiniTable";
+import AppNav from "../components/AppNav";
+import SubTabs from "../components/SubTabs";
+import ContextBar from "../components/ContextBar";
+import { IconEdit, IconLock, IconLogout, IconMedal } from "../components/icons";
 
 /* ============================================================
    SCARSI LEAGUE — Next.js + Supabase (dati live)
    ============================================================ */
 
 const MESI_LUNGHI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+const SEZIONI_VALIDE = ["lega", "partite", "classifiche", "giocatori", "tu"];
 
 function TotwCard({ p }) {
   return (
@@ -91,6 +96,97 @@ function MiniChart({ titolo, valori, colore, confronto }) {
   );
 }
 
+/* ---------- dettaglio giocatore: riusato sia per il drill-down dalle liste, sia per "Tu" ---------- */
+function DettaglioGiocatore({ s, players, S, VOTES, rel, PREMI, ruoloUtente, mostraMenu }) {
+  const badges = computeBadges(s, players);
+  const premi = PREMI.filter((p) => p.giocatore_id === s.id);
+  const { mean, std } = distribuzioneVoti(players);
+  const andamento = computeAndamento(s.storico, mean, std);
+  const confrontoTrend = (chiave, unita, decimali) => {
+    const validi = andamento.filter((p) => p[chiave] != null);
+    if (validi.length < 2) return null;
+    const finestra = validi.slice(-5);
+    const primo = finestra[0][chiave], ultimo = finestra[finestra.length - 1][chiave];
+    const dir = ultimo > primo ? unita.su : ultimo < primo ? unita.giu : unita.pari;
+    return `${unita.nome} ${dir} da ${primo.toFixed(decimali)} a ${ultimo.toFixed(decimali)} nelle ultime ${finestra.length} partite`;
+  };
+  const partner = bestPartner(s.id, rel);
+  const nemesis = worstNemesis(s.id, rel);
+  const fc = fanCritic(s.id, VOTES);
+
+  return (
+    <div className="detail">
+      <PlayerCard s={s} badges={badges} />
+      <div>
+        <div className="kv">
+          <div className="stat"><b>{s.presenze}</b><span>Presenze</span></div>
+          <div className="stat"><b>{s.w}-{s.d}-{s.l}</b><span>V-N-P</span></div>
+          <div className="stat"><b>{s.gol}</b><span>Gol attribuiti</span></div>
+          <div className="stat"><b>{s.mediaVoto.toFixed(2)}</b><span>Media voto</span></div>
+          <div className="stat"><b>{s.mvp}</b><span>MVP</span></div>
+          <div className="stat"><b>{Math.round(s.winRate * 100)}%</b><span>Win rate</span></div>
+        </div>
+        <BadgeRow badges={badges} />
+        <PremiRow premi={premi} />
+
+        <div className="grid2">
+          <MiniChart titolo="📈 Andamento voto" colore="#E3C567"
+            valori={andamento.map((p) => p.voto)}
+            confronto={confrontoTrend("voto", { nome: "Media voto", su: "salita", giu: "scesa", pari: "stabile" }, 2)} />
+          <MiniChart titolo="🎯 Andamento overall" colore="#5CBF7A"
+            valori={andamento.map((p) => p.overall)}
+            confronto={confrontoTrend("overall", { nome: "Overall", su: "salito", giu: "sceso", pari: "stabile" }, 0)} />
+        </div>
+
+        {fc && fc.nVoti > 0 && fc.fan && fc.critic && fc.fan.votante !== fc.critic.votante && S[fc.fan.votante] && S[fc.critic.votante] && (
+          <div className="insight">
+            🗳️ <b>{fc.nVoti} voti ricevuti.</b> Miglior fan: <b>{S[fc.fan.votante].nome}</b> (media {fc.fan.avg.toFixed(2)} in {fc.fan.n} voti).
+            {" "}Critico più severo: <b>{S[fc.critic.votante].nome}</b> (media {fc.critic.avg.toFixed(2)} in {fc.critic.n} voti).
+          </div>
+        )}
+        {partner && S[partner.mate] && (
+          <div className="insight">
+            👥 <b>Miglior coppia</b> — con <b>{S[partner.mate].nome}</b>: {partner.w} vittorie su {partner.games} partite insieme ({Math.round(partner.wr * 100)}%).
+          </div>
+        )}
+        {nemesis && S[nemesis.opp] && (
+          <div className="insight">
+            😈 <b>Nemesi</b> — contro <b>{S[nemesis.opp].nome}</b> vince il {Math.round(nemesis.wr * 100)}% delle volte ({nemesis.w} su {nemesis.games}).
+          </div>
+        )}
+
+        {mostraMenu && (
+          <div className="menulist">
+            <a className="menu-item" href="/profilo"><IconEdit /> Modifica profilo</a>
+            <a className="menu-item" href="/privacy"><IconLock /> Privacy</a>
+            {ruoloUtente === "admin" && <a className="menu-item" href="/admin"><IconMedal /> Admin<span className="hint">solo admin</span></a>}
+            <button type="button" className="menu-item danger" onClick={() => supabase.auth.signOut()}><IconLogout /> Esci</button>
+          </div>
+        )}
+
+        <h2>Storico partite</h2>
+        <table className="storico">
+          <thead><tr>
+            <th>Data</th><th>Squadra</th><th>Risultato</th><th className="num">Voto</th><th className="num">Gol</th><th>Esito</th>
+          </tr></thead>
+          <tbody>
+            {[...s.storico].reverse().map((r, i) => (
+              <tr key={i} className="click" onClick={() => { window.location.href = `/partita/${r.match.dbId}`; }}>
+                <td>{r.match.d}</td>
+                <td>{r.team}</td>
+                <td>{r.team} {r.score}</td>
+                <td className="num">{r.voto ?? "—"}</td>
+                <td className="num">{r.gol}</td>
+                <td><span className={`dot ${r.esito}`} style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%" }} /> {r.esito === "W" ? "Vittoria" : r.esito === "L" ? "Sconfitta" : "Pareggio"}{r.match.mvp === s.id ? " · ⭐ MVP" : ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function tradErroreAuth(msg) {
   const m = (msg || "").toLowerCase();
   if (m.includes("invalid login credentials")) return "Email o password errati.";
@@ -102,6 +198,8 @@ function tradErroreAuth(msg) {
   if (m.includes("same_password")) return "La nuova password deve essere diversa da quella attuale.";
   return msg;
 }
+
+const GOOGLE_ABILITATO = true;
 
 function Login() {
   const [modo, setModo] = useState("password"); // "password" | "magic"
@@ -200,8 +298,12 @@ function Login() {
       <h1>Scarsi <em>League</em></h1>
       <p className="season">Accesso riservato ai membri della lega</p>
 
-      <button className="gbtn" onClick={google}>Continua con Google</button>
-      <div className="divider"><span>oppure</span></div>
+      {GOOGLE_ABILITATO && (
+        <>
+          <button className="gbtn" onClick={google}>Continua con Google</button>
+          <div className="divider"><span>oppure</span></div>
+        </>
+      )}
 
       {modo === "password" && (
         <span className="toggle authtoggle">
@@ -346,12 +448,16 @@ export default function Home() {
   const [consenso, setConsenso] = useState(null); // null = verifica, false = da accettare
   const [autorizzato, setAutorizzato] = useState(null); // null = verifica in corso
   const [ruoloUtente, setRuoloUtente] = useState("membro");
+  const [mioGiocatoreId, setMioGiocatoreId] = useState(null);
   const [leghe, setLeghe] = useState([]);
   const [legaId, setLegaId] = useState(null);
   const [stagioneId, setStagioneId] = useState(null); // null = non ancora scelta esplicitamente (default: stagione attiva)
   const [raw, setRaw] = useState(null);
   const [errore, setErrore] = useState("");
-  const [view, setView] = useState("home");
+
+  const [sezione, setSezione] = useState("lega"); // lega | partite | classifiche | giocatori | tu
+  const [legaSub, setLegaSub] = useState("panoramica"); // panoramica | totw
+  const [classificheSub, setClassificheSub] = useState("generale"); // generale | specialita | record
   const [sel, setSel] = useState(null);
   const [totwId, setTotwId] = useState(null);
   const [soloRegulars, setSoloRegulars] = useState(true);
@@ -360,6 +466,16 @@ export default function Home() {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => subscription.unsubscribe();
+  }, []);
+
+  // legge la sezione (e sotto-sezione) iniziali dalla URL, così i link da altre pagine funzionano
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sez = params.get("sezione");
+    if (sez && SEZIONI_VALIDE.includes(sez)) setSezione(sez);
+    const sub = params.get("sub");
+    if (sub === "totw" && sez === "lega") setLegaSub("totw");
+    if (sez === "classifiche" && ["generale", "specialita", "record"].includes(sub)) setClassificheSub(sub);
   }, []);
 
   useEffect(() => {
@@ -374,12 +490,13 @@ export default function Home() {
       const mail = (session.user?.email || "").toLowerCase();
       const { data: me } = await supabase
         .from("membri_autorizzati")
-        .select("email, ruolo")
+        .select("email, ruolo, giocatore_id")
         .eq("email", mail)
         .maybeSingle();
       if (!me) { setAutorizzato(false); return; }
       setAutorizzato(true);
       setRuoloUtente(me.ruolo || "membro");
+      setMioGiocatoreId(me.giocatore_id || null);
       const [pa, gi, pr, vo, le, st, dm, pre] = await Promise.all([
         supabase.from("partite").select("*"),
         supabase.from("giocatori").select("*"),
@@ -403,12 +520,6 @@ export default function Home() {
   ), [raw, legaId]);
   const stagioneAttiva = stagioniLega.find((s) => s.attiva) || null;
   const stagioneSel = stagioneId ?? stagioneAttiva?.id ?? "all";
-  const selettoreStagione = stagioniLega.length > 0 && (
-    <select className="legasel" value={stagioneSel} onChange={(e) => setStagioneId(e.target.value === "all" ? "all" : Number(e.target.value))}>
-      <option value="all">Tutte le stagioni</option>
-      {stagioniLega.map((s) => <option key={s.id} value={s.id}>{s.nome}{s.attiva ? " · in corso" : ""}</option>)}
-    </select>
-  );
 
   const data = useMemo(() => {
     if (!raw || legaId == null) return null;
@@ -425,6 +536,16 @@ export default function Home() {
   const S = useMemo(() => (data && !data.vuota ? buildStats(data.P, data.matches) : null), [data]);
   const rel = useMemo(() => (data ? pairAndNemesis(data.matches) : null), [data]);
 
+  const naviga = (key) => {
+    setSel(null);
+    setSezione(key);
+    if (key === "lega") setLegaSub("panoramica");
+    if (key === "classifiche") setClassificheSub("generale");
+    window.history.pushState(null, "", `/?sezione=${key}`);
+  };
+  const scegliLegaSub = (k) => { setLegaSub(k); setSel(null); window.history.replaceState(null, "", `/?sezione=lega&sub=${k}`); };
+  const scegliClassificheSub = (k) => { setClassificheSub(k); setSel(null); window.history.replaceState(null, "", `/?sezione=classifiche&sub=${k}`); };
+
   if (session === undefined) return <div className="centered">Caricamento…</div>;
   if (!session) return <Login />;
   if (consenso === false) {
@@ -434,28 +555,32 @@ export default function Home() {
     return <RichiediAccesso email={session.user?.email} />;
   }
   if (errore) return <div className="centered">Errore dati: {errore}</div>;
+
+  const mioIniziali = () => {
+    if (!mioGiocatoreId || !S) return (session.user?.email || "?").slice(0, 2).toUpperCase();
+    const p = S[mioGiocatoreId];
+    if (!p) return (session.user?.email || "?").slice(0, 2).toUpperCase();
+    return (p.nick || p.nome).split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  };
+
   if (data?.vuota) return (
-    <div className="wrap">
-      <div className="brand"><h1>Scarsi <em>League</em></h1></div>
-      <nav>
-        {leghe.length > 1 && (
-          <select className="legasel" value={legaId ?? ""} onChange={(e) => { setLegaId(Number(e.target.value)); setStagioneId(null); }}>
-            {leghe.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
-          </select>
-        )}
-        {selettoreStagione}
-        <a className="navlink" href="/profilo">Profilo</a>
-        <a className="navlink" href="/hall-of-fame">Hall of Fame</a>
-        {ruoloUtente === "admin" && <a className="navlink" href="/admin">Admin</a>}
-      </nav>
-      <p className="centered">
-        {stagioneSel !== "all" && stagioneSel === stagioneAttiva?.id
-          ? `La stagione ${stagioneAttiva.nome} inizia a breve ⚽`
-          : "Questa lega non ha ancora partite importate ⚽"}
-      </p>
-    </div>
+    <>
+      <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} />
+      <div className="wrap navpad">
+        <div className="brand"><h1>Scarsi <em>League</em></h1></div>
+        <ContextBar stagioni={stagioniLega} stagioneSel={stagioneSel}
+          onStagioneChange={(v) => setStagioneId(v)}
+          leghe={leghe.length > 1 ? leghe : null} legaId={legaId}
+          onLegaChange={(id) => { setLegaId(id); setStagioneId(null); }} />
+        <p className="centered">
+          {stagioneSel !== "all" && stagioneSel === stagioneAttiva?.id
+            ? `La stagione ${stagioneAttiva.nome} inizia a breve ⚽`
+            : "Questa lega non ha ancora partite importate ⚽"}
+        </p>
+      </div>
+    </>
   );
-  if (!data || !S) return <div className="centered">Carico le partite…</div>;
+  if (!data || !S) return <div className="centered">Caricamento…</div>;
 
   const { matches: MATCHES, votes: VOTES, dm: DM, premi: PREMI } = data;
   const players = Object.values(S).filter((p) => p.presenze > 0);
@@ -503,321 +628,301 @@ export default function Home() {
   });
 
   const selS = sel != null ? S[sel] : null;
-  const selPartner = selS ? bestPartner(selS.id, rel) : null;
-  const selNemesis = selS ? worstNemesis(selS.id, rel) : null;
-  const selFC = selS ? fanCritic(selS.id, VOTES) : null;
-  const selBadges = selS ? computeBadges(selS, players) : [];
-  const selPremi = selS ? PREMI.filter((p) => p.giocatore_id === selS.id) : [];
-  const { mean: mediaLega, std: stdLega } = distribuzioneVoti(players);
-  const selAndamento = selS ? computeAndamento(selS.storico, mediaLega, stdLega) : [];
-  const confrontoTrend = (chiave, unita, decimali) => {
-    const validi = selAndamento.filter((p) => p[chiave] != null);
-    if (validi.length < 2) return null;
-    const finestra = validi.slice(-5);
-    const primo = finestra[0][chiave], ultimo = finestra[finestra.length - 1][chiave];
-    const dir = ultimo > primo ? unita.su : ultimo < primo ? unita.giu : unita.pari;
-    return `${unita.nome} ${dir} da ${primo.toFixed(decimali)} a ${ultimo.toFixed(decimali)} nelle ultime ${finestra.length} partite`;
-  };
+  const mioStats = mioGiocatoreId != null ? players.find((p) => p.id === mioGiocatoreId) : null;
 
   return (
-    <div className="wrap">
-      <header>
-        <div className="brand">
-          <h1>Scarsi <em>League</em></h1>
-          <span className="season">Calci8Lunedì · Bettinelli · {stagioneSel === "all" ? "Tutte le stagioni" : (stagioniLega.find((s) => s.id === stagioneSel)?.nome || "")}</span>
-        </div>
-        <span className="livebadge">● DATI LIVE DA SUPABASE</span>
-      </header>
+    <>
+      <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} />
+      <div className="wrap navpad">
+        <header>
+          <div className="brand">
+            <h1>Scarsi <em>League</em></h1>
+            <span className="season">Calci8Lunedì · Bettinelli</span>
+          </div>
+          <span className="livebadge">● DATI LIVE DA SUPABASE</span>
+        </header>
 
-      <nav>
-        {[["home", "Home"], ["classifiche", "Classifiche"], ["giocatori", "Giocatori"], ["record", "Record"], ["totw", "TOTW"]].map(([k, l]) => (
-          <button key={k} className={view === k && sel == null ? "on" : ""} onClick={() => { setView(k); setSel(null); }}>{l}</button>
-        ))}
-        {leghe.length > 1 && (
-          <select className="legasel" value={legaId ?? ""} onChange={(e) => { setLegaId(Number(e.target.value)); setStagioneId(null); }}>
-            {leghe.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
-          </select>
-        )}
-        {selettoreStagione}
-        <a className="navlink" href="/profilo">Profilo</a>
-        <a className="navlink" href="/hall-of-fame">Hall of Fame</a>
-        {ruoloUtente === "admin" && <a className="navlink" href="/admin">Admin</a>}
-        <button className="logout" onClick={() => supabase.auth.signOut()}>Esci</button>
-      </nav>
+        <ContextBar stagioni={stagioniLega} stagioneSel={stagioneSel}
+          onStagioneChange={(v) => setStagioneId(v)}
+          leghe={leghe.length > 1 ? leghe : null} legaId={legaId}
+          onLegaChange={(id) => { setLegaId(id); setStagioneId(null); }} />
 
-      {sel == null && view === "home" && (
-        <>
-          <a className="hero" href={`/partita/${last.dbId}`}>
-            <span className="lbl">Ultima partita · {last.d}</span>
-            <div className="team"><b>{lastTeams[0]}</b><span>forza {last.f[0]}</span></div>
-            <div className="score">{last.score[lastTeams[0]]}<span>–</span>{last.score[lastTeams[1]]}</div>
-            <div className="team"><b>{lastTeams[1]}</b><span>forza {last.f[1]}</span></div>
-            {last.mvp > 0 && S[last.mvp] && (
-              <div className="mvpline">⭐ MVP <b>{S[last.mvp].nome}</b> · voto {last.stats[last.mvp][0]}</div>
-            )}
-          </a>
+        {sel == null && sezione === "lega" && (
+          <>
+            <SubTabs active={legaSub} onSelect={scegliLegaSub} tabs={[
+              { key: "panoramica", label: "Panoramica" },
+              { key: "totw", label: "Team of the Week" },
+              { key: "hof", label: "Hall of Fame", href: "/hall-of-fame" },
+            ]} />
 
-          {potm && potmDati && (
-            <>
-              <h2>🏅 Player of the Month · {MESI_LUNGHI[new Date().getMonth()]}</h2>
-              <div className="potmcard">
-                <div className="potm-wrap">
-                  <span className="potm-ribbon">🏅 POTM</span>
-                  <PlayerCard s={potm} badges={computeBadges(potm, players)} onClick={() => setSel(potm.id)} />
+            {legaSub === "panoramica" && (
+              <>
+                <a className="hero" href={`/partita/${last.dbId}`}>
+                  <span className="lbl">Ultima partita · {last.d}</span>
+                  <div className="team"><b>{lastTeams[0]}</b><span>forza {last.f[0]}</span></div>
+                  <div className="score">{last.score[lastTeams[0]]}<span>–</span>{last.score[lastTeams[1]]}</div>
+                  <div className="team"><b>{lastTeams[1]}</b><span>forza {last.f[1]}</span></div>
+                  {last.mvp > 0 && S[last.mvp] && (
+                    <div className="mvpline">⭐ MVP <b>{S[last.mvp].nome}</b> · voto {last.stats[last.mvp][0]}</div>
+                  )}
+                </a>
+
+                {potm && potmDati && (
+                  <>
+                    <h2>🏅 Player of the Month · {MESI_LUNGHI[new Date().getMonth()]}</h2>
+                    <div className="potmcard">
+                      <div className="potm-wrap">
+                        <span className="potm-ribbon">🏅 POTM</span>
+                        <PlayerCard s={potm} badges={computeBadges(potm, players)} onClick={() => setSel(potm.id)} />
+                      </div>
+                      <div className="potm-stats">
+                        <div className="stat"><b>{potmDati.mediaVoto.toFixed(2)}</b><span>Media voto del mese</span></div>
+                        <div className="stat"><b>{potmDati.presenze}</b><span>Presenze nel mese</span></div>
+                        <div className="stat"><b>{Math.round(potmDati.winRate * 100)}%</b><span>Win rate nel mese</span></div>
+                        {potmDati.mvp > 0 && <div className="stat"><b>{potmDati.mvp}</b><span>MVP nel mese</span></div>}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="strip">
+                  <div className="stat"><b>{MATCHES.length}</b><span>Partite</span></div>
+                  <div className="stat"><b>{players.length}</b><span>Giocatori</span></div>
+                  <div className="stat"><b>{totGol}</b><span>Gol totali</span></div>
+                  <div className="stat"><b>{(totGol / MATCHES.length).toFixed(1)}</b><span>Gol / partita</span></div>
+                  <div className="stat"><b>{VOTES.length}</b><span>Voti espressi</span></div>
                 </div>
-                <div className="potm-stats">
-                  <div className="stat"><b>{potmDati.mediaVoto.toFixed(2)}</b><span>Media voto del mese</span></div>
-                  <div className="stat"><b>{potmDati.presenze}</b><span>Presenze nel mese</span></div>
-                  <div className="stat"><b>{Math.round(potmDati.winRate * 100)}%</b><span>Win rate nel mese</span></div>
-                  {potmDati.mvp > 0 && <div className="stat"><b>{potmDati.mvp}</b><span>MVP nel mese</span></div>}
+                <div className="note">⚠ Marcatori attribuiti su Fubles: {golAttribuiti} gol su {totGol} totali — classifiche marcatori parziali.</div>
+
+                <h2>AI Insight della settimana</h2>
+                <div className="insight">
+                  <b>{topVoto.nome}</b> ha la miglior media voto tra i regulars ({topVoto.mediaVoto.toFixed(2)} in {topVoto.presenze} partite).
+                  {" "}<b>{capocannoniere.nome}</b> guida i marcatori con {capocannoniere.gol} gol attribuiti.
+                  {" "}<b>{topMvp.nome}</b> è il giocatore col maggior numero di premi MVP ({topMvp.mvp}).
                 </div>
-              </div>
-            </>
-          )}
-
-          <div className="strip">
-            <div className="stat"><b>{MATCHES.length}</b><span>Partite</span></div>
-            <div className="stat"><b>{players.length}</b><span>Giocatori</span></div>
-            <div className="stat"><b>{totGol}</b><span>Gol totali</span></div>
-            <div className="stat"><b>{(totGol / MATCHES.length).toFixed(1)}</b><span>Gol / partita</span></div>
-            <div className="stat"><b>{VOTES.length}</b><span>Voti espressi</span></div>
-          </div>
-          <div className="note">⚠ Marcatori attribuiti su Fubles: {golAttribuiti} gol su {totGol} totali — classifiche marcatori parziali.</div>
-
-          <h2>Classifica
-            <span className="toggle">
-              <button className={soloRegulars ? "on" : ""} onClick={() => setSoloRegulars(true)}>Regulars ≥2</button>
-              <button className={!soloRegulars ? "on" : ""} onClick={() => setSoloRegulars(false)}>Tutti ({players.length})</button>
-            </span>
-          </h2>
-          <table>
-            <thead><tr>
-              <th className="rank">#</th><th>Giocatore</th><th className="num">Pt</th><th className="num">P</th>
-              <th className="num">V</th><th className="num">N</th><th className="num">S</th><th className="num">Gol</th>
-              <th className="num">Media</th><th className="num">MVP</th><th>Forma</th>
-            </tr></thead>
-            <tbody>
-              {classifica.map((p, i) => (
-                <tr key={p.id} className="click" onClick={() => setSel(p.id)}>
-                  <td className="rank">{i + 1}</td>
-                  <td className="pname">{p.nome}</td>
-                  <td className="num"><b>{p.punti}</b></td>
-                  <td className="num">{p.presenze}</td>
-                  <td className="num">{p.w}</td>
-                  <td className="num">{p.d}</td>
-                  <td className="num">{p.l}</td>
-                  <td className="num">{p.gol}</td>
-                  <td className="num">{p.mediaVoto.toFixed(2)}</td>
-                  <td className="num">{p.mvp}</td>
-                  <td><FormaDots forma={p.forma} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <h2>AI Insight della settimana</h2>
-          <div className="insight">
-            <b>{topVoto.nome}</b> ha la miglior media voto tra i regulars ({topVoto.mediaVoto.toFixed(2)} in {topVoto.presenze} partite).
-            {" "}<b>{capocannoniere.nome}</b> guida i marcatori con {capocannoniere.gol} gol attribuiti.
-            {" "}<b>{topMvp.nome}</b> è il giocatore col maggior numero di premi MVP ({topMvp.mvp}).
-          </div>
-        </>
-      )}
-
-      {sel == null && view === "classifiche" && (
-        <>
-          <h2>Classifiche di specialità</h2>
-          <div className="grid2">
-            <MiniTable title="⚽ Capocannonieri" note="⚠ Gol parzialmente attribuiti su Fubles"
-              cols={["Giocatore", "Gol", "Pres."]}
-              rows={[...players].filter((p) => p.gol > 0).sort((a, b) => b.gol - a.gol).slice(0, 8)
-                .map((p) => [p.nome, p.gol, p.presenze])} />
-            <MiniTable title="📈 Media voto (min. 2 presenze)"
-              cols={["Giocatore", "Media", "Pres."]}
-              rows={[...players].filter((p) => p.presenze >= 2).sort((a, b) => b.mediaVoto - a.mediaVoto).slice(0, 8)
-                .map((p) => [p.nome, p.mediaVoto.toFixed(2), p.presenze])} />
-            <MiniTable title="⭐ MVP"
-              cols={["Giocatore", "MVP", "Pres."]}
-              rows={[...players].filter((p) => p.mvp > 0).sort((a, b) => b.mvp - a.mvp).slice(0, 8)
-                .map((p) => [p.nome, p.mvp, p.presenze])} />
-            <MiniTable title="🎽 Presenze"
-              cols={["Giocatore", "Pres.", "V-N-S"]}
-              rows={[...players].sort((a, b) => b.presenze - a.presenze || b.mediaVoto - a.mediaVoto).slice(0, 8)
-                .map((p) => [p.nome, p.presenze, `${p.w}-${p.d}-${p.l}`])} />
-            {Object.keys(assistTotali).length > 0 && (
-              <MiniTable title="🅰️ Assist" note="Dati inseriti a mano dall'admin"
-                cols={["Giocatore", "Assist", "Pres."]}
-                rows={Object.entries(assistTotali).sort((a, b) => b[1] - a[1]).slice(0, 8)
-                  .map(([gid, n]) => [S[gid]?.nome || "—", n, S[gid]?.presenze || 0])} />
+              </>
             )}
-            {Object.keys(cleanSheetTotali).length > 0 && (
-              <MiniTable title="🧤 Clean sheet" note="Dati inseriti a mano dall'admin"
-                cols={["Giocatore", "Clean sheet", "Pres."]}
-                rows={Object.entries(cleanSheetTotali).sort((a, b) => b[1] - a[1]).slice(0, 8)
-                  .map(([gid, n]) => [S[gid]?.nome || "—", n, S[gid]?.presenze || 0])} />
-            )}
-          </div>
-        </>
-      )}
 
-      {sel == null && view === "giocatori" && (
-        <>
-          <h2>Rose e carte
-            <span className="toggle">
-              <button className={soloRegulars ? "on" : ""} onClick={() => setSoloRegulars(true)}>Regulars ≥2</button>
-              <button className={!soloRegulars ? "on" : ""} onClick={() => setSoloRegulars(false)}>Tutti ({players.length})</button>
-            </span>
-          </h2>
-          <div className="grid">
-            {[...shown].sort((a, b) => b.overall - a.overall).map((p) => (
-              <PlayerCard key={p.id} s={p} badges={computeBadges(p, players)} onClick={() => setSel(p.id)} />
-            ))}
-          </div>
-        </>
-      )}
-
-      {sel == null && view === "record" && (
-        <>
-          <h2>Record</h2>
-          <div className="rec">
-            <div className="stat">
-              <span>Più gol in una partita (attribuiti)</span>
-              <b>{maxGolPartita.v} gol</b>
-              <div className="who">{maxGolPartita.p?.nome} · {maxGolPartita.m?.d}</div>
-            </div>
-            <div className="stat">
-              <span>Miglior serie di vittorie</span>
-              <b>{bestStreak.v} di fila</b>
-              <div className="who">{bestStreak.p?.nome}</div>
-            </div>
-            <div className="stat">
-              <span>Vittoria con maggior scarto</span>
-              <b>+{maxScarto.v}</b>
-              <div className="who">{Object.entries(maxScarto.m.score).map(([t, g]) => `${t} ${g}`).join(" – ")} · {maxScarto.m.d}</div>
-            </div>
-            <div className="stat">
-              <span>Partita con più gol</span>
-              <b>{topPartita.v} gol</b>
-              <div className="who">{Object.entries(topPartita.m.score).map(([t, g]) => `${t} ${g}`).join(" – ")} · {topPartita.m.d}</div>
-            </div>
-            <div className="stat">
-              <span>Capocannoniere</span>
-              <b>{capocannoniere.gol} gol</b>
-              <div className="who">{capocannoniere.nome}</div>
-            </div>
-            <div className="stat">
-              <span>Miglior media voto</span>
-              <b>{topVoto.mediaVoto.toFixed(2)}</b>
-              <div className="who">{topVoto.nome}</div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {sel == null && view === "totw" && (
-        <>
-          <h2>Team of the Week
-            <select className="legasel" value={totwMatch.dbId} onChange={(e) => setTotwId(Number(e.target.value))}>
-              {[...MATCHES].reverse().map((m) => {
-                const t = Object.keys(m.teams);
-                return <option key={m.dbId} value={m.dbId}>{m.d} · {t[0]} {m.score[t[0]]}-{m.score[t[1]]} {t[1]}</option>;
-              })}
-            </select>
-          </h2>
-          {totw.adattata && (
-            <div className="note">⚠ Ruoli insufficienti per la 1-3-3-1: schierati i migliori voti disponibili a prescindere dal ruolo.</div>
-          )}
-          {totw.disponibili === 0 ? (
-            <p className="season">Nessun voto disponibile per questa partita.</p>
-          ) : (
-            <div className="pitch">
-              <div className="pitch-header">
-                <span className="pitch-logo">Scarsi <em>League</em></span>
-                <h3 className="pitch-title">Team of the Week · {totwMatch.d}</h3>
-              </div>
-              <div className="pitch-bande">
-                <div className="pitch-lines" aria-hidden="true">
-                  <span className="pl-half" />
-                  <span className="pl-circle" />
-                  <span className="pl-box pl-box-top" />
-                  <span className="pl-box pl-box-bottom" />
-                </div>
-                {["ATT", "CEN", "DIF", "POR"].map((r) => (
-                  <div key={r} className="banda">
-                    {totw.bande[r].map((p) => <TotwCard key={p.id} p={p} />)}
+            {legaSub === "totw" && (
+              <>
+                <h2>Team of the Week
+                  <select className="legasel" value={totwMatch.dbId} onChange={(e) => setTotwId(Number(e.target.value))}>
+                    {[...MATCHES].reverse().map((m) => {
+                      const t = Object.keys(m.teams);
+                      return <option key={m.dbId} value={m.dbId}>{m.d} · {t[0]} {m.score[t[0]]}-{m.score[t[1]]} {t[1]}</option>;
+                    })}
+                  </select>
+                </h2>
+                {totw.adattata && (
+                  <div className="note">⚠ Ruoli insufficienti per la 1-3-3-1: schierati i migliori voti disponibili a prescindere dal ruolo.</div>
+                )}
+                {totw.disponibili === 0 ? (
+                  <p className="season">Nessun voto disponibile per questa partita.</p>
+                ) : (
+                  <div className="pitch">
+                    <div className="pitch-header">
+                      <span className="pitch-logo">Scarsi <em>League</em></span>
+                      <h3 className="pitch-title">Team of the Week · {totwMatch.d}</h3>
+                    </div>
+                    <div className="pitch-bande">
+                      <div className="pitch-lines" aria-hidden="true">
+                        <span className="pl-half" />
+                        <span className="pl-circle" />
+                        <span className="pl-box pl-box-top" />
+                        <span className="pl-box pl-box-bottom" />
+                      </div>
+                      {["ATT", "CEN", "DIF", "POR"].map((r) => (
+                        <div key={r} className="banda">
+                          {totw.bande[r].map((p) => <TotwCard key={p.id} p={p} />)}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
-      )}
+                )}
+              </>
+            )}
+          </>
+        )}
 
-      {selS && (
-        <>
-          <button className="back" onClick={() => setSel(null)}>← Indietro</button>
-          <div className="detail">
-            <PlayerCard s={selS} badges={selBadges} />
-            <div>
-              <div className="kv">
-                <div className="stat"><b>{selS.presenze}</b><span>Presenze</span></div>
-                <div className="stat"><b>{selS.w}-{selS.d}-{selS.l}</b><span>V-N-P</span></div>
-                <div className="stat"><b>{selS.gol}</b><span>Gol attribuiti</span></div>
-                <div className="stat"><b>{selS.mediaVoto.toFixed(2)}</b><span>Media voto</span></div>
-                <div className="stat"><b>{selS.mvp}</b><span>MVP</span></div>
-                <div className="stat"><b>{Math.round(selS.winRate * 100)}%</b><span>Win rate</span></div>
+        {sel == null && sezione === "partite" && (
+          <>
+            <h2>Partite della stagione</h2>
+            {MATCHES.length === 0 ? (
+              <p className="season">Nessuna partita in questa stagione.</p>
+            ) : (
+              <div className="matchlist">
+                {[...MATCHES].reverse().map((m) => {
+                  const t = Object.keys(m.teams);
+                  return (
+                    <a key={m.dbId} className="matchcard" href={`/partita/${m.dbId}`}>
+                      <span className="mc-data">{m.d}</span>
+                      <span className="mc-mid"><span>{t[0]}</span><span>{m.score[t[0]]}–{m.score[t[1]]}</span><span>{t[1]}</span></span>
+                      <span className="mc-arrow">→</span>
+                    </a>
+                  );
+                })}
               </div>
-              <BadgeRow badges={selBadges} />
-              <PremiRow premi={selPremi} />
+            )}
+          </>
+        )}
 
+        {sel == null && sezione === "classifiche" && (
+          <>
+            <SubTabs active={classificheSub} onSelect={scegliClassificheSub} tabs={[
+              { key: "generale", label: "Generale" },
+              { key: "specialita", label: "Specialità" },
+              { key: "record", label: "Record" },
+            ]} />
+
+            {classificheSub === "generale" && (
+              <>
+                <h2>Classifica
+                  <span className="toggle">
+                    <button className={soloRegulars ? "on" : ""} onClick={() => setSoloRegulars(true)}>Regulars ≥2</button>
+                    <button className={!soloRegulars ? "on" : ""} onClick={() => setSoloRegulars(false)}>Tutti ({players.length})</button>
+                  </span>
+                </h2>
+                <table>
+                  <thead><tr>
+                    <th className="rank">#</th><th>Giocatore</th><th className="num">Pt</th><th className="num">P</th>
+                    <th className="num">V</th><th className="num">N</th><th className="num">S</th><th className="num">Gol</th>
+                    <th className="num">Media</th><th className="num">MVP</th><th>Forma</th>
+                  </tr></thead>
+                  <tbody>
+                    {classifica.map((p, i) => (
+                      <tr key={p.id} className="click" onClick={() => setSel(p.id)}>
+                        <td className="rank">{i + 1}</td>
+                        <td className="pname">{p.nome}</td>
+                        <td className="num"><b>{p.punti}</b></td>
+                        <td className="num">{p.presenze}</td>
+                        <td className="num">{p.w}</td>
+                        <td className="num">{p.d}</td>
+                        <td className="num">{p.l}</td>
+                        <td className="num">{p.gol}</td>
+                        <td className="num">{p.mediaVoto.toFixed(2)}</td>
+                        <td className="num">{p.mvp}</td>
+                        <td><FormaDots forma={p.forma} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+
+            {classificheSub === "specialita" && (
               <div className="grid2">
-                <MiniChart titolo="📈 Andamento voto" colore="#E3C567"
-                  valori={selAndamento.map((p) => p.voto)}
-                  confronto={confrontoTrend("voto", { nome: "Media voto", su: "salita", giu: "scesa", pari: "stabile" }, 2)} />
-                <MiniChart titolo="🎯 Andamento overall" colore="#5CBF7A"
-                  valori={selAndamento.map((p) => p.overall)}
-                  confronto={confrontoTrend("overall", { nome: "Overall", su: "salito", giu: "sceso", pari: "stabile" }, 0)} />
+                <MiniTable title="⚽ Capocannonieri" note="⚠ Gol parzialmente attribuiti su Fubles"
+                  cols={["Giocatore", "Gol", "Pres."]}
+                  rows={[...players].filter((p) => p.gol > 0).sort((a, b) => b.gol - a.gol).slice(0, 8)
+                    .map((p) => [p.nome, p.gol, p.presenze])} />
+                <MiniTable title="📈 Media voto (min. 2 presenze)"
+                  cols={["Giocatore", "Media", "Pres."]}
+                  rows={[...players].filter((p) => p.presenze >= 2).sort((a, b) => b.mediaVoto - a.mediaVoto).slice(0, 8)
+                    .map((p) => [p.nome, p.mediaVoto.toFixed(2), p.presenze])} />
+                <MiniTable title="⭐ MVP"
+                  cols={["Giocatore", "MVP", "Pres."]}
+                  rows={[...players].filter((p) => p.mvp > 0).sort((a, b) => b.mvp - a.mvp).slice(0, 8)
+                    .map((p) => [p.nome, p.mvp, p.presenze])} />
+                <MiniTable title="🎽 Presenze"
+                  cols={["Giocatore", "Pres.", "V-N-S"]}
+                  rows={[...players].sort((a, b) => b.presenze - a.presenze || b.mediaVoto - a.mediaVoto).slice(0, 8)
+                    .map((p) => [p.nome, p.presenze, `${p.w}-${p.d}-${p.l}`])} />
+                {Object.keys(assistTotali).length > 0 && (
+                  <MiniTable title="🅰️ Assist" note="Dati inseriti a mano dall'admin"
+                    cols={["Giocatore", "Assist", "Pres."]}
+                    rows={Object.entries(assistTotali).sort((a, b) => b[1] - a[1]).slice(0, 8)
+                      .map(([gid, n]) => [S[gid]?.nome || "—", n, S[gid]?.presenze || 0])} />
+                )}
+                {Object.keys(cleanSheetTotali).length > 0 && (
+                  <MiniTable title="🧤 Clean sheet" note="Dati inseriti a mano dall'admin"
+                    cols={["Giocatore", "Clean sheet", "Pres."]}
+                    rows={Object.entries(cleanSheetTotali).sort((a, b) => b[1] - a[1]).slice(0, 8)
+                      .map(([gid, n]) => [S[gid]?.nome || "—", n, S[gid]?.presenze || 0])} />
+                )}
               </div>
+            )}
 
-              {selFC && selFC.nVoti > 0 && selFC.fan && selFC.critic && selFC.fan.votante !== selFC.critic.votante && S[selFC.fan.votante] && S[selFC.critic.votante] && (
-                <div className="insight">
-                  🗳️ <b>{selFC.nVoti} voti ricevuti.</b> Miglior fan: <b>{S[selFC.fan.votante].nome}</b> (media {selFC.fan.avg.toFixed(2)} in {selFC.fan.n} voti).
-                  {" "}Critico più severo: <b>{S[selFC.critic.votante].nome}</b> (media {selFC.critic.avg.toFixed(2)} in {selFC.critic.n} voti).
+            {classificheSub === "record" && (
+              <div className="rec">
+                <div className="stat">
+                  <span>Più gol in una partita (attribuiti)</span>
+                  <b>{maxGolPartita.v} gol</b>
+                  <div className="who">{maxGolPartita.p?.nome} · {maxGolPartita.m?.d}</div>
                 </div>
-              )}
-              {selPartner && S[selPartner.mate] && (
-                <div className="insight">
-                  👥 <b>Miglior coppia</b> — con <b>{S[selPartner.mate].nome}</b>: {selPartner.w} vittorie su {selPartner.games} partite insieme ({Math.round(selPartner.wr * 100)}%).
+                <div className="stat">
+                  <span>Miglior serie di vittorie</span>
+                  <b>{bestStreak.v} di fila</b>
+                  <div className="who">{bestStreak.p?.nome}</div>
                 </div>
-              )}
-              {selNemesis && S[selNemesis.opp] && (
-                <div className="insight">
-                  😈 <b>Nemesi</b> — contro <b>{S[selNemesis.opp].nome}</b> vince il {Math.round(selNemesis.wr * 100)}% delle volte ({selNemesis.w} su {selNemesis.games}).
+                <div className="stat">
+                  <span>Vittoria con maggior scarto</span>
+                  <b>+{maxScarto.v}</b>
+                  <div className="who">{Object.entries(maxScarto.m.score).map(([t, g]) => `${t} ${g}`).join(" – ")} · {maxScarto.m.d}</div>
                 </div>
-              )}
+                <div className="stat">
+                  <span>Partita con più gol</span>
+                  <b>{topPartita.v} gol</b>
+                  <div className="who">{Object.entries(topPartita.m.score).map(([t, g]) => `${t} ${g}`).join(" – ")} · {topPartita.m.d}</div>
+                </div>
+                <div className="stat">
+                  <span>Capocannoniere</span>
+                  <b>{capocannoniere.gol} gol</b>
+                  <div className="who">{capocannoniere.nome}</div>
+                </div>
+                <div className="stat">
+                  <span>Miglior media voto</span>
+                  <b>{topVoto.mediaVoto.toFixed(2)}</b>
+                  <div className="who">{topVoto.nome}</div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
-              <h2>Storico partite</h2>
-              <table className="storico">
-                <thead><tr>
-                  <th>Data</th><th>Squadra</th><th>Risultato</th><th className="num">Voto</th><th className="num">Gol</th><th>Esito</th>
-                </tr></thead>
-                <tbody>
-                  {[...selS.storico].reverse().map((r, i) => (
-                    <tr key={i} className="click" onClick={() => { window.location.href = `/partita/${r.match.dbId}`; }}>
-                      <td>{r.match.d}</td>
-                      <td>{r.team}</td>
-                      <td>{r.team} {r.score}</td>
-                      <td className="num">{r.voto ?? "—"}</td>
-                      <td className="num">{r.gol}</td>
-                      <td><span className={`dot ${r.esito}`} style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%" }} /> {r.esito === "W" ? "Vittoria" : r.esito === "L" ? "Sconfitta" : "Pareggio"}{r.match.mvp === selS.id ? " · ⭐ MVP" : ""}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {sel == null && sezione === "giocatori" && (
+          <>
+            <h2>Rose e carte
+              <span className="toggle">
+                <button className={soloRegulars ? "on" : ""} onClick={() => setSoloRegulars(true)}>Regulars ≥2</button>
+                <button className={!soloRegulars ? "on" : ""} onClick={() => setSoloRegulars(false)}>Tutti ({players.length})</button>
+              </span>
+            </h2>
+            <div className="grid">
+              {[...shown].sort((a, b) => b.overall - a.overall).map((p) => (
+                <PlayerCard key={p.id} s={p} badges={computeBadges(p, players)} onClick={() => setSel(p.id)} />
+              ))}
             </div>
-          </div>
-        </>
-      )}
-    </div>
+          </>
+        )}
+
+        {sel == null && sezione === "tu" && (
+          mioGiocatoreId == null ? (
+            <div className="centered" style={{ padding: "12vh 0" }}>
+              Non hai ancora collegato una scheda giocatore.<br />
+              <a className="plink" href="/profilo">Vai al tuo profilo</a> per collegarla.
+            </div>
+          ) : !mioStats ? (
+            <div className="centered" style={{ padding: "12vh 0" }}>
+              Nessuna presenza tua in questa lega/stagione selezionata.<br />
+              <a className="plink" href="#" onClick={(e) => { e.preventDefault(); setStagioneId("all"); }}>Prova con "Tutte le stagioni"</a>
+            </div>
+          ) : (
+            <>
+              <h2>La tua bacheca</h2>
+              <DettaglioGiocatore s={mioStats} players={players} S={S} VOTES={VOTES} rel={rel} PREMI={PREMI}
+                ruoloUtente={ruoloUtente} mostraMenu />
+            </>
+          )
+        )}
+
+        {selS && (
+          <>
+            <button className="back" onClick={() => setSel(null)}>← Indietro</button>
+            <DettaglioGiocatore s={selS} players={players} S={S} VOTES={VOTES} rel={rel} PREMI={PREMI}
+              ruoloUtente={ruoloUtente} mostraMenu={false} />
+          </>
+        )}
+      </div>
+    </>
   );
 }

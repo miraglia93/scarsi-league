@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import { fmtData, iniziali } from "../../../lib/engine";
+import AppNav from "../../../components/AppNav";
 
 function RigaFormazione({ p }) {
   return (
@@ -201,11 +202,13 @@ export default function Partita() {
   const reportText = buildReportText({ partita, squadre, gol, righe, mvp, media1, media2, golAttribuiti, totGol, leader });
 
   return (
-    <div className="wrap">
-      <div className="brand">
-        <h1>Scarsi <em>League</em></h1>
-        <span className="season"><a className="plink" href="/">← Torna alla lega</a></span>
-      </div>
+    <>
+      <AppNav active="partite" />
+      <div className="wrap navpad">
+        <div className="brand">
+          <h1>Scarsi <em>League</em></h1>
+          <span className="season"><a className="plink" href="/?sezione=partite">← Torna alle partite</a></span>
+        </div>
 
       <section className="hero" style={{ marginTop: 20 }}>
         <span className="lbl">{fmtData(partita.data, { year: true })}{partita.struttura ? ` · ${partita.struttura}` : ""}</span>
@@ -253,7 +256,8 @@ export default function Partita() {
               : perSquadra(nome).map((r) => <RigaFormazione key={r.giocatore_id} p={r} />)}
           </div>
         ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
