@@ -1,9 +1,23 @@
 import { ImageResponse } from "next/og";
 
-export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
-export default function Icon() {
+const TAGLIE = [
+  { id: "32", size: 32 },
+  { id: "192", size: 192 },
+  { id: "512", size: 512 },
+];
+
+export function generateImageMetadata() {
+  return TAGLIE.map(({ id, size }) => ({
+    id,
+    size: { width: size, height: size },
+    contentType,
+  }));
+}
+
+export default function Icon({ id }) {
+  const { size } = TAGLIE.find((t) => t.id === id) || TAGLIE[0];
   return new ImageResponse(
     (
       <div
@@ -14,12 +28,12 @@ export default function Icon() {
           alignItems: "center",
           justifyContent: "center",
           background: "#0B1210",
-          borderRadius: 6,
+          borderRadius: size * 0.19,
         }}
       >
-        <span style={{ color: "#E3C567", fontSize: 22, fontWeight: 700 }}>S</span>
+        <span style={{ color: "#E3C567", fontSize: size * 0.68, fontWeight: 700 }}>S</span>
       </div>
     ),
-    { ...size }
+    { width: size, height: size },
   );
 }

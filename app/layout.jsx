@@ -12,6 +12,15 @@ export const metadata = {
     locale: "it_IT",
     type: "website",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Scarsi League",
+  },
+};
+
+export const viewport = {
+  themeColor: "#0B1210",
 };
 
 export default function RootLayout({ children }) {
