@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth, distribuzioneVoti, computeAndamento, computeXP, computeLivello } from "../lib/engine";
+import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth, distribuzioneVoti, computeAndamento, computeXP, computeLivello, tradErroreDb } from "../lib/engine";
 import PlayerCard from "../components/PlayerCard";
 import FormaDots from "../components/FormaDots";
 import MiniTable from "../components/MiniTable";
@@ -223,7 +223,7 @@ function tradErroreAuth(msg) {
   return msg;
 }
 
-const GOOGLE_ABILITATO = true;
+const GOOGLE_ABILITATO = false;
 
 function Login() {
   const [modo, setModo] = useState("password"); // "password" | "magic"
@@ -245,7 +245,7 @@ function Login() {
       provider: "google",
       options: { redirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
     });
-    if (error) setErr("Accesso Google non disponibile: " + error.message);
+    if (error) setErr("Accesso Google non disponibile: " + tradErroreDb(error.message));
   };
 
   const inviaMagicLink = async () => {
@@ -391,7 +391,7 @@ function RichiediAccesso({ email }) {
     const { error } = await supabase.from("richieste_accesso").insert({
       email: (email || "").toLowerCase(), nome, messaggio,
     });
-    if (error) { setErr(error.message); setStato("errore"); }
+    if (error) { setErr(tradErroreDb(error.message)); setStato("errore"); }
     else setStato("inviata");
   };
 
@@ -442,7 +442,7 @@ function Consenso({ email, onAccettato }) {
       versione: VERSIONE_PRIVACY,
     });
     setBusy(false);
-    if (error) setErr(error.message); else onAccettato();
+    if (error) setErr(tradErroreDb(error.message)); else onAccettato();
   };
 
   return (
@@ -532,7 +532,7 @@ export default function Home() {
         supabase.from("premi").select("*"),
       ]);
       const err = pa.error || gi.error || pr.error || vo.error;
-      if (err) { setErrore(err.message); return; }
+      if (err) { setErrore(tradErroreDb(err.message)); return; }
       setLeghe(le.data || []);
       setLegaId((le.data || [])[0]?.id ?? null);
       setRaw({ pa: pa.data, gi: gi.data, pr: pr.data, vo: vo.data, st: st.data || [], dm: dm.data || [], premi: pre.data || [] });
@@ -602,7 +602,13 @@ export default function Home() {
   if (autorizzato === false) {
     return <RichiediAccesso email={session.user?.email} />;
   }
-  if (errore) return <div className="centered">Errore dati: {errore}</div>;
+  if (errore) return (
+    <div className="centered">
+      Non siamo riusciti a caricare i dati della lega.<br />
+      <span style={{ fontSize: 12, opacity: .7 }}>{errore}</span><br />
+      <a className="plink" href="/">Riprova</a>
+    </div>
+  );
 
   const mioIniziali = () => {
     if (!mioGiocatoreId || !S) return (session.user?.email || "?").slice(0, 2).toUpperCase();
@@ -611,23 +617,43 @@ export default function Home() {
     return (p.nick || p.nome).split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   };
 
-  if (data?.vuota) return (
-    <>
-      <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} />
-      <div className="wrap navpad">
-        <div className="brand"><h1>Scarsi <em>League</em></h1></div>
-        <ContextBar stagioni={stagioniLega} stagioneSel={stagioneSel}
-          onStagioneChange={(v) => setStagioneId(v)}
-          leghe={leghe.length > 1 ? leghe : null} legaId={legaId}
-          onLegaChange={(id) => { setLegaId(id); setStagioneId(null); }} />
-        <p className="centered">
-          {stagioneSel !== "all" && stagioneSel === stagioneAttiva?.id
-            ? `La stagione ${stagioneAttiva.nome} inizia a breve ⚽`
-            : "Questa lega non ha ancora partite importate ⚽"}
-        </p>
-      </div>
-    </>
-  );
+  if (data?.vuota) {
+    const mioAllTime = mioGiocatoreId != null && SAllTime ? SAllTime[mioGiocatoreId] : null;
+    const mostraTuAllTime = sezione === "tu" && mioAllTime && mioAllTime.presenze > 0;
+    return (
+      <>
+        <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} />
+        <div className="wrap navpad">
+          <div className="brand"><h1>Scarsi <em>League</em></h1></div>
+          <ContextBar stagioni={stagioniLega} stagioneSel={stagioneSel}
+            onStagioneChange={(v) => setStagioneId(v)}
+            leghe={leghe.length > 1 ? leghe : null} legaId={legaId}
+            onLegaChange={(id) => { setLegaId(id); setStagioneId(null); }} />
+          {mostraTuAllTime ? (
+            <>
+              <h2>La tua bacheca</h2>
+              <div className="note">La stagione selezionata sopra è vuota: qui sotto vedi le tue statistiche e il tuo XP di tutte le stagioni.</div>
+              <DettaglioGiocatore s={mioAllTime}
+                players={Object.values(SAllTime).filter((p) => p.presenze > 0)}
+                S={SAllTime} VOTES={dataAllTime.votes} rel={pairAndNemesis(dataAllTime.matches)}
+                PREMI={raw.premi.filter((p) => p.lega_id === legaId)}
+                ruoloUtente={ruoloUtente} mostraMenu xp={xpDiGiocatore(mioGiocatoreId)} />
+            </>
+          ) : (
+            <p className="centered">
+              {sezione === "tu" && mioGiocatoreId == null ? (
+                <>Non hai ancora collegato una scheda giocatore.<br /><a className="plink" href="/profilo">Vai al tuo profilo</a> per collegarla.</>
+              ) : stagioneSel !== "all" && stagioneSel === stagioneAttiva?.id ? (
+                `La stagione ${stagioneAttiva.nome} inizia a breve ⚽`
+              ) : (
+                "Questa lega non ha ancora partite importate ⚽"
+              )}
+            </p>
+          )}
+        </div>
+      </>
+    );
+  }
   if (!data || !S) return <div className="centered">Caricamento…</div>;
 
   const { matches: MATCHES, votes: VOTES, dm: DM, premi: PREMI } = data;

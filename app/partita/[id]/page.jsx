@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
-import { fmtData, iniziali } from "../../../lib/engine";
+import { fmtData, iniziali, tradErroreDb } from "../../../lib/engine";
 import AppNav from "../../../components/AppNav";
 
 function RigaFormazione({ p }) {
@@ -104,12 +104,12 @@ export default function Partita() {
       if (!me) { setStato("no-membro"); return; }
 
       const { data: p, error: pErr } = await supabase.from("partite").select("*").eq("id", id).maybeSingle();
-      if (pErr) { setErrore(pErr.message); setStato("errore"); return; }
+      if (pErr) { setErrore(tradErroreDb(pErr.message)); setStato("errore"); return; }
       if (!p) { setStato("non-trovata"); return; }
       setPartita(p);
 
       const { data: pr, error: prErr } = await supabase.from("prestazioni").select("*").eq("partita_id", id);
-      if (prErr) { setErrore(prErr.message); setStato("errore"); return; }
+      if (prErr) { setErrore(tradErroreDb(prErr.message)); setStato("errore"); return; }
 
       const { data: dm } = await supabase.from("dati_manuali").select("*").eq("partita_id", id);
       const dmMap = {};
@@ -122,7 +122,7 @@ export default function Partita() {
       let giocMap = {};
       if (ids.length) {
         const { data: gi, error: giErr } = await supabase.from("giocatori").select("*").in("id", ids);
-        if (giErr) { setErrore(giErr.message); setStato("errore"); return; }
+        if (giErr) { setErrore(tradErroreDb(giErr.message)); setStato("errore"); return; }
         (gi || []).forEach((g) => { giocMap[g.id] = g; });
       }
 
@@ -175,7 +175,13 @@ export default function Partita() {
   if (stato === "no-login" || stato === "no-consenso" || stato === "no-membro") {
     return <div className="centered">Accesso riservato ai membri della lega. <a className="plink" href="/">← Vai al login</a></div>;
   }
-  if (stato === "errore") return <div className="centered">Errore dati: {errore}</div>;
+  if (stato === "errore") return (
+    <div className="centered">
+      Non siamo riusciti a caricare questa partita.<br />
+      <span style={{ fontSize: 12, opacity: .7 }}>{errore}</span><br />
+      <a className="plink" href="/?sezione=partite">Torna alle partite</a>
+    </div>
+  );
   if (stato === "non-trovata") return <div className="centered">Partita non trovata. <a className="plink" href="/">← Torna a Scarsi League</a></div>;
 
   const squadre = [partita.squadra_1, partita.squadra_2];

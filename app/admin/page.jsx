@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { tradErroreDb } from "../../lib/engine";
 import AppNav from "../../components/AppNav";
 
 export default function Admin() {
@@ -119,7 +120,7 @@ export default function Admin() {
   const azione = async (fn, email) => {
     setMsg("");
     const { data, error } = await supabase.rpc(fn, { p_email: email });
-    if (error || data !== "ok") setMsg("⚠ " + (error?.message || data));
+    if (error || data !== "ok") setMsg("⚠ " + (error ? tradErroreDb(error.message) : data));
     else setMsg("✅ Fatto");
     carica();
   };
@@ -127,13 +128,13 @@ export default function Admin() {
   const revoca = async (email) => {
     if (!confirm(`Revocare l'accesso a ${email}?`)) return;
     const { error } = await supabase.from("membri_autorizzati").delete().eq("email", email);
-    setMsg(error ? "⚠ " + error.message : "✅ Accesso revocato");
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Accesso revocato");
     carica();
   };
 
   const creaLega = async () => {
     const { error } = await supabase.from("leghe").insert({ nome: nomeLega, slug: slugLega.toLowerCase() });
-    setMsg(error ? "⚠ " + error.message : "✅ Lega creata");
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Lega creata");
     setNomeLega(""); setSlugLega("");
     carica();
   };
@@ -156,7 +157,7 @@ export default function Admin() {
     }));
     const { error } = await supabase.from("dati_manuali").upsert(payload, { onConflict: "partita_id,giocatore_id" });
     setDatiBusy(false);
-    setDatiMsg(error ? "⚠ " + error.message : "✅ Dati salvati");
+    setDatiMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Dati salvati");
   };
 
   const assegnaPremio = async () => {
@@ -176,7 +177,7 @@ export default function Admin() {
       etichetta: premioEtichetta,
       emoji: premioEmoji || null,
     });
-    if (error) { setPremioMsg("⚠ " + error.message); return; }
+    if (error) { setPremioMsg("⚠ " + tradErroreDb(error.message)); return; }
     setPremioMsg("✅ Premio assegnato");
     setPremioGiocatore(""); setPremioTipo(""); setPremioEtichetta(""); setPremioEmoji("");
     setPremioPartitaId(""); setPremioStagioneId("");
@@ -186,7 +187,7 @@ export default function Admin() {
   const rimuoviPremio = async (id) => {
     if (!confirm("Rimuovere questo premio?")) return;
     const { error } = await supabase.from("premi").delete().eq("id", id);
-    setPremioMsg(error ? "⚠ " + error.message : "✅ Premio rimosso");
+    setPremioMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Premio rimosso");
     carica();
   };
 
@@ -197,7 +198,7 @@ export default function Admin() {
       .update({ stagione_id: nuovaStagioneId ? Number(nuovaStagioneId) : null })
       .eq("id", partitaId);
     setSpostaBusy(null);
-    setMsg(error ? "⚠ " + error.message : "✅ Partita spostata di stagione");
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Partita spostata di stagione");
     carica();
   };
 
@@ -215,7 +216,7 @@ export default function Admin() {
       fine: mod.fine !== undefined ? (mod.fine || null) : s.fine,
     }).eq("id", s.id);
     setStagioneBusy(null);
-    setMsg(error ? "⚠ " + error.message : "✅ Stagione aggiornata");
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Stagione aggiornata");
     if (!error) setStagioneModifiche((m) => { const n = { ...m }; delete n[s.id]; return n; });
     carica();
   };
@@ -224,10 +225,10 @@ export default function Admin() {
     setStagioneBusy(s.id); setMsg("");
     const { error: e1 } = await supabase.from("stagioni")
       .update({ attiva: false }).eq("lega_id", s.lega_id).eq("attiva", true);
-    if (e1) { setStagioneBusy(null); setMsg("⚠ " + e1.message); return; }
+    if (e1) { setStagioneBusy(null); setMsg("⚠ " + tradErroreDb(e1.message)); return; }
     const { error: e2 } = await supabase.from("stagioni").update({ attiva: true }).eq("id", s.id);
     setStagioneBusy(null);
-    setMsg(e2 ? "⚠ " + e2.message : "✅ Stagione impostata come attiva");
+    setMsg(e2 ? "⚠ " + tradErroreDb(e2.message) : "✅ Stagione impostata come attiva");
     carica();
   };
 
@@ -236,7 +237,7 @@ export default function Admin() {
     const oggi = new Date().toISOString().slice(0, 10);
     const { error } = await supabase.from("stagioni").update({ fine: oggi }).eq("id", s.id);
     setStagioneBusy(null);
-    setMsg(error ? "⚠ " + error.message : "✅ Stagione chiusa");
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Stagione chiusa");
     carica();
   };
 
@@ -252,7 +253,7 @@ export default function Admin() {
       fine: nuovaStagioneFine || null,
       attiva: false,
     });
-    setMsg(error ? "⚠ " + error.message : "✅ Stagione creata");
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Stagione creata");
     if (!error) { setNuovaStagioneNome(""); setNuovaStagioneInizio(""); setNuovaStagioneFine(""); }
     carica();
   };
@@ -281,7 +282,7 @@ export default function Admin() {
       await supabase.from("import_log").insert({ fonte: "admin-ui", errori: logNote });
     }
     setEliminaBusy(false);
-    setMsg(error ? "⚠ " + error.message : "✅ Eliminazione completata");
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Eliminazione completata");
     setEliminaTarget(null);
     carica();
   };

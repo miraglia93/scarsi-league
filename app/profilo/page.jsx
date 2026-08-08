@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { tradErroreDb } from "../../lib/engine";
 import AppNav from "../../components/AppNav";
 
 export default function Profilo() {
@@ -54,7 +55,7 @@ export default function Profilo() {
     setBusy(true); setMsg("");
     const { data, error } = await supabase.rpc("claim_giocatore", { gid });
     setBusy(false);
-    if (error || data !== "ok") setMsg("⚠ " + (error?.message || data));
+    if (error || data !== "ok") setMsg("⚠ " + (error ? tradErroreDb(error.message) : data));
     else { setMsg(gid ? "✅ Scheda collegata!" : "Scheda scollegata"); carica(); }
   };
 
@@ -66,7 +67,7 @@ export default function Profilo() {
       ruolo_prevalente: ruolo,
     }).eq("id", scheda.id);
     setBusy(false);
-    setMsg(error ? "⚠ " + error.message : "✅ Profilo salvato");
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Profilo salvato");
     if (!error) carica();
   };
 
@@ -79,12 +80,12 @@ export default function Profilo() {
     const path = `${user.id}.${ext}`;
     const { error: upErr } = await supabase.storage.from("avatars")
       .upload(path, file, { upsert: true, contentType: file.type });
-    if (upErr) { setBusy(false); setMsg("⚠ Upload: " + upErr.message); return; }
+    if (upErr) { setBusy(false); setMsg("⚠ Caricamento foto non riuscito: " + tradErroreDb(upErr.message)); return; }
     const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
     const url = pub.publicUrl + "?v=" + Date.now(); // bypass cache dopo cambio foto
     const { error } = await supabase.from("giocatori").update({ foto_url: url }).eq("id", scheda.id);
     setBusy(false);
-    setMsg(error ? "⚠ " + error.message : "✅ Foto aggiornata");
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Foto aggiornata");
     if (!error) carica();
   };
 

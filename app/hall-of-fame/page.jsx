@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { assemble, buildStats } from "../../lib/engine";
+import { assemble, buildStats, tradErroreDb } from "../../lib/engine";
 import AppNav from "../../components/AppNav";
 import SubTabs from "../../components/SubTabs";
 
@@ -35,7 +35,7 @@ export default function HallOfFame() {
         supabase.from("voti_ricevuti").select("*"),
       ]);
       const err = le.error || st.error || pa.error || gi.error || pr.error || vo.error;
-      if (err) { setErrore(err.message); setStato("errore"); return; }
+      if (err) { setErrore(tradErroreDb(err.message)); setStato("errore"); return; }
 
       setLeghe(le.data || []);
       setLegaId((le.data || [])[0]?.id ?? null);
@@ -48,7 +48,13 @@ export default function HallOfFame() {
   if (stato === "no-login" || stato === "no-consenso" || stato === "no-membro") {
     return <div className="centered">Accesso riservato ai membri della lega. <a className="plink" href="/">← Vai al login</a></div>;
   }
-  if (stato === "errore") return <div className="centered">Errore dati: {errore}</div>;
+  if (stato === "errore") return (
+    <div className="centered">
+      Non siamo riusciti a caricare la Hall of Fame.<br />
+      <span style={{ fontSize: 12, opacity: .7 }}>{errore}</span><br />
+      <a className="plink" href="/hall-of-fame">Riprova</a>
+    </div>
+  );
 
   const stagioniConcluse = raw.st
     .filter((s) => s.lega_id === legaId && !s.attiva)

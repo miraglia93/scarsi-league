@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { tradErroreDb } from "../../lib/engine";
 
 export default function Reset() {
   const [stato, setStato] = useState("verifica"); // verifica | pronto | no-sessione | fatto
@@ -24,7 +25,7 @@ export default function Reset() {
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password });
     setBusy(false);
-    if (error) setErr(error.message); else setStato("fatto");
+    if (error) setErr(tradErroreDb(error.message)); else setStato("fatto");
   };
 
   if (stato === "verifica") return <div className="centered">Verifica in corso…</div>;
