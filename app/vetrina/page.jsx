@@ -1,0 +1,51 @@
+"use client";
+
+export default function Vetrina() {
+  return (
+    <div className="wrap" style={{ maxWidth: 720, paddingTop: 40, paddingBottom: 60 }}>
+      <div className="brand">
+        <h1>Scarsi <em>League</em></h1>
+      </div>
+      <p className="season" style={{ marginTop: 8 }}>
+        Trasforma le partite della tua lega di calcetto in statistiche, carte
+        giocatore e classifiche — senza sostituire Fubles, lo completa.
+      </p>
+
+      <h2 style={{ marginTop: 32 }}>Cosa ottieni</h2>
+      <div className="grid2">
+        <div className="stat" style={{ textAlign: "left" }}><b style={{ fontSize: 15 }}>🃏 Carte giocatore</b><span style={{ display: "block", textTransform: "none", letterSpacing: "normal", marginTop: 4 }}>Stile Ultimate Team, calibrate sui voti reali della tua lega</span></div>
+        <div className="stat" style={{ textAlign: "left" }}><b style={{ fontSize: 15 }}>🏆 Classifiche</b><span style={{ display: "block", textTransform: "none", letterSpacing: "normal", marginTop: 4 }}>Generale, marcatori, media voto, MVP, presenze, assist</span></div>
+        <div className="stat" style={{ textAlign: "left" }}><b style={{ fontSize: 15 }}>🎮 XP e livelli</b><span style={{ display: "block", textTransform: "none", letterSpacing: "normal", marginTop: 4 }}>Progressione automatica da Esordiente a Leggenda</span></div>
+        <div className="stat" style={{ textAlign: "left" }}><b style={{ fontSize: 15 }}>⭐ Team of the Week</b><span style={{ display: "block", textTransform: "none", letterSpacing: "normal", marginTop: 4 }}>Formazione della giornata, pronta da condividere</span></div>
+        <div className="stat" style={{ textAlign: "left" }}><b style={{ fontSize: 15 }}>🏅 Hall of Fame</b><span style={{ display: "block", textTransform: "none", letterSpacing: "normal", marginTop: 4 }}>Albo d&apos;oro di fine stagione</span></div>
+        <div className="stat" style={{ textAlign: "left" }}><b style={{ fontSize: 15 }}>📊 Pagina partita</b><span style={{ display: "block", textTransform: "none", letterSpacing: "normal", marginTop: 4 }}>Formazioni, media voto, report WhatsApp con un tap</span></div>
+      </div>
+
+      <h2 style={{ marginTop: 32 }}>Come funziona</h2>
+      <div className="menulist">
+        <div className="menu-item" style={{ cursor: "default" }}>1️⃣ Crei la tua lega e la prima stagione, in un minuto</div>
+        <div className="menu-item" style={{ cursor: "default" }}>2️⃣ Inviti i tuoi amici con un link — approvi tu chi entra</div>
+        <div className="menu-item" style={{ cursor: "default" }}>3️⃣ Dopo ogni partita, importi i risultati da Fubles</div>
+      </div>
+
+      <p className="msg" style={{ marginTop: 24 }}>
+        L&apos;abbonamento per creare una lega è gestito manualmente per ora —
+        te lo attiviamo appena richiedi accesso.
+      </p>
+
+      <button
+        onClick={() => { window.location.href = "/crea-lega"; }}
+        style={{
+          marginTop: 8, padding: "12px 20px", border: "none", borderRadius: 8,
+          background: "#E3C567", color: "#0B1210", fontWeight: 700, cursor: "pointer",
+        }}
+      >
+        Crea la tua lega →
+      </button>
+
+      <p className="msg" style={{ marginTop: 32, fontSize: 13, opacity: .7 }}>
+        Già membro di una lega? <a className="plink" href="/">Accedi qui</a>.
+      </p>
+    </div>
+  );
+}
