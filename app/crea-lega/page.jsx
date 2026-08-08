@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { tradErroreDb } from "../../lib/engine";
 import AppNav from "../../components/AppNav";
+import CopyButton from "../../components/CopyButton";
 
 export default function CreaLega() {
   const [stato, setStato] = useState("verifica"); // verifica | no-login | ok
@@ -51,6 +52,10 @@ export default function CreaLega() {
   if (stato === "verifica") return <div className="centered">Caricamento…</div>;
   if (stato === "no-login") return <div className="centered"><a className="plink" href="/">Fai login per continuare</a></div>;
 
+  const linkInvito = legaCreata
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/?lega=${legaCreata.slug}`
+    : "";
+
   return (
     <>
       <AppNav active="tu" />
@@ -62,9 +67,16 @@ export default function CreaLega() {
 
         {legaCreata ? (
           <>
-            <p className="msg">✅ Lega <b>{legaCreata.nome}</b> creata! Condividi questo link con i tuoi amici perché possano richiedere l&apos;accesso:</p>
-            <p className="msg"><code>{typeof window !== "undefined" ? window.location.origin : ""}/?lega={legaCreata.slug}</code></p>
-            <a className="plink" href="/">Vai alla tua nuova lega →</a>
+            <p className="msg">✅ Lega <b>{legaCreata.nome}</b> creata, con la prima stagione già pronta. Tre passi per partire:</p>
+            <div className="betaform">
+              <p className="msg"><b>1. Invita i tuoi amici</b> — mandagli questo link, li porta dritti alla richiesta di accesso:</p>
+              <p className="msg"><code>{linkInvito}</code></p>
+              <CopyButton text={linkInvito} label="📋 Copia link di invito" />
+              <p className="msg" style={{ marginTop: 18 }}><b>2. Approva le richieste</b> man mano che arrivano, dal pannello admin.</p>
+              <p className="msg"><b>3. Importa la prima partita</b> quando hai i dati Fubles, sempre dal pannello admin.</p>
+              <a className="plink" href="/admin" style={{ display: "inline-block", marginTop: 10 }}>Vai al pannello admin →</a>
+            </div>
+            <a className="plink" href="/" style={{ display: "inline-block", marginTop: 16 }}>Vai alla tua nuova lega →</a>
           </>
         ) : piattaforma?.abbonamento_attivo ? (
           <>

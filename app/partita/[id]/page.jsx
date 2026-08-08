@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import { fmtData, iniziali, tradErroreDb } from "../../../lib/engine";
 import AppNav from "../../../components/AppNav";
+import CopyButton from "../../../components/CopyButton";
 
 function RigaFormazione({ p }) {
   return (
@@ -48,35 +49,7 @@ function buildReportText({ partita, squadre, gol, righe, mvp, media1, media2, go
 }
 
 function ReportButton({ testo }) {
-  const [stato, setStato] = useState("idle"); // idle | copiato | errore
-
-  const copia = async () => {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(testo);
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = testo;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      }
-      setStato("copiato");
-      setTimeout(() => setStato("idle"), 2000);
-    } catch {
-      setStato("errore");
-      setTimeout(() => setStato("idle"), 3000);
-    }
-  };
-
-  return (
-    <button className="mini ok" onClick={copia}>
-      {stato === "copiato" ? "Copiato ✅" : stato === "errore" ? "⚠ Copia manualmente" : "📋 Copia report WhatsApp"}
-    </button>
-  );
+  return <CopyButton text={testo} label="📋 Copia report WhatsApp" />;
 }
 
 export default function Partita() {

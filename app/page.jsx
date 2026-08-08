@@ -10,6 +10,7 @@ import AppNav from "../components/AppNav";
 import SubTabs from "../components/SubTabs";
 import ContextBar from "../components/ContextBar";
 import { IconEdit, IconLock, IconLogout, IconMedal, IconShield } from "../components/icons";
+import CopyButton from "../components/CopyButton";
 
 /* ============================================================
    SCARSI LEAGUE — Next.js + Supabase (dati live)
@@ -642,6 +643,8 @@ export default function Home() {
   if (data?.vuota) {
     const mioAllTime = mioGiocatoreId != null && SAllTime ? SAllTime[mioGiocatoreId] : null;
     const mostraTuAllTime = sezione === "tu" && mioAllTime && mioAllTime.presenze > 0;
+    const legaCorrente = leghe.find((l) => l.id === legaId);
+    const linkInvito = legaCorrente ? `${typeof window !== "undefined" ? window.location.origin : ""}/?lega=${legaCorrente.slug}` : "";
     return (
       <>
         <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} />
@@ -661,15 +664,27 @@ export default function Home() {
                 PREMI={raw.premi.filter((p) => p.lega_id === legaId)}
                 ruoloUtente={ruoloUtente} mostraMenu xp={xpDiGiocatore(mioGiocatoreId)} />
             </>
+          ) : sezione !== "tu" || mioGiocatoreId != null ? (
+            stagioneSel !== "all" && stagioneSel === stagioneAttiva?.id ? (
+              <p className="centered">{`La stagione ${stagioneAttiva.nome} inizia a breve ⚽`}</p>
+            ) : ruoloUtente === "admin" ? (
+              <div className="wrap" style={{ maxWidth: 480, paddingLeft: 0, paddingRight: 0 }}>
+                <p className="season">Sei admin qui — un paio di cose per partire</p>
+                <p className="msg">
+                  <b>Invita i tuoi amici</b> con questo link, li porta dritti alla richiesta di accesso:
+                </p>
+                <p className="msg"><code>{linkInvito}</code></p>
+                <CopyButton text={linkInvito} label="📋 Copia link di invito" />
+                <p className="msg" style={{ marginTop: 18 }}>
+                  Quando hai i dati Fubles della prima partita, <a className="plink" href="/admin">importali dal pannello admin</a>.
+                </p>
+              </div>
+            ) : (
+              <p className="centered">Questa lega non ha ancora partite importate ⚽</p>
+            )
           ) : (
             <p className="centered">
-              {sezione === "tu" && mioGiocatoreId == null ? (
-                <>Non hai ancora collegato una scheda giocatore.<br /><a className="plink" href="/profilo">Vai al tuo profilo</a> per collegarla.</>
-              ) : stagioneSel !== "all" && stagioneSel === stagioneAttiva?.id ? (
-                `La stagione ${stagioneAttiva.nome} inizia a breve ⚽`
-              ) : (
-                "Questa lega non ha ancora partite importate ⚽"
-              )}
+              Non hai ancora collegato una scheda giocatore.<br /><a className="plink" href="/profilo">Vai al tuo profilo</a> per collegarla.
             </p>
           )}
         </div>
