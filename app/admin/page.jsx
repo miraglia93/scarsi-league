@@ -418,6 +418,40 @@ export default function Admin() {
       </div>
       {msg && <div className="note" style={{ marginTop: 12 }}>{msg}</div>}
 
+      <h2>Importa partite</h2>
+      <p className="season">
+        Incolla il testo copiato dai fogli dell&apos;estrazione Fubles (seleziona le celle,
+        incluse le intestazioni, e copia/incolla qui). VOTI_RICEVUTI è opzionale.
+      </p>
+      <div className="betaform">
+        <label className="flabel">PARTITE</label>
+        <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+          value={importPartiteText} onChange={(e) => { setImportPartiteText(e.target.value); setImportPreview(null); }} />
+        <label className="flabel">PRESTAZIONI_GIOCATORI</label>
+        <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+          value={importPrestazioniText} onChange={(e) => { setImportPrestazioniText(e.target.value); setImportPreview(null); }} />
+        <label className="flabel">VOTI_RICEVUTI (opzionale)</label>
+        <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+          value={importVotiText} onChange={(e) => { setImportVotiText(e.target.value); setImportPreview(null); }} />
+        <button className="mini" style={{ marginTop: 10 }} onClick={analizzaImport}
+          disabled={!importPartiteText || !importPrestazioniText}>Analizza</button>
+        {importMsg && <div className="note">{importMsg}</div>}
+        {importPreview && (
+          <>
+            <div className="note">
+              {importPreview.parsed.partite.length - importPreview.nPartiteEsistenti} partite nuove
+              {importPreview.nPartiteEsistenti > 0 && ` (${importPreview.nPartiteEsistenti} già presenti, saltate insieme alle relative prestazioni/voti)`}
+              · {importPreview.nGiocatoriNuovi} giocatori nuovi
+              · {importPreview.nPrestazioni} prestazioni
+              · {importPreview.nVoti} voti
+            </div>
+            <button className="mini ok" onClick={confermaImport} disabled={importBusy}>
+              {importBusy ? "Importazione…" : "✓ Conferma import"}
+            </button>
+          </>
+        )}
+      </div>
+
       {superAdmin && (
         <>
           <h2>Piattaforma — abbonamenti ({utentiPiattaforma.length})</h2>
@@ -569,40 +603,6 @@ export default function Admin() {
         <input type="date" value={nuovaStagioneFine} onChange={(e) => setNuovaStagioneFine(e.target.value)} />
         <button className="mini ok" style={{ marginTop: 10 }} onClick={creaStagione}
           disabled={!nuovaStagioneLega || !nuovaStagioneNome || !nuovaStagioneInizio}>+ Crea stagione</button>
-      </div>
-
-      <h2>Importa partite</h2>
-      <p className="season">
-        Incolla il testo copiato dai fogli dell&apos;estrazione Fubles (seleziona le celle,
-        incluse le intestazioni, e copia/incolla qui). VOTI_RICEVUTI è opzionale.
-      </p>
-      <div className="betaform">
-        <label className="flabel">PARTITE</label>
-        <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
-          value={importPartiteText} onChange={(e) => { setImportPartiteText(e.target.value); setImportPreview(null); }} />
-        <label className="flabel">PRESTAZIONI_GIOCATORI</label>
-        <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
-          value={importPrestazioniText} onChange={(e) => { setImportPrestazioniText(e.target.value); setImportPreview(null); }} />
-        <label className="flabel">VOTI_RICEVUTI (opzionale)</label>
-        <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
-          value={importVotiText} onChange={(e) => { setImportVotiText(e.target.value); setImportPreview(null); }} />
-        <button className="mini" style={{ marginTop: 10 }} onClick={analizzaImport}
-          disabled={!importPartiteText || !importPrestazioniText}>Analizza</button>
-        {importMsg && <div className="note">{importMsg}</div>}
-        {importPreview && (
-          <>
-            <div className="note">
-              {importPreview.parsed.partite.length - importPreview.nPartiteEsistenti} partite nuove
-              {importPreview.nPartiteEsistenti > 0 && ` (${importPreview.nPartiteEsistenti} già presenti, saltate insieme alle relative prestazioni/voti)`}
-              · {importPreview.nGiocatoriNuovi} giocatori nuovi
-              · {importPreview.nPrestazioni} prestazioni
-              · {importPreview.nVoti} voti
-            </div>
-            <button className="mini ok" onClick={confermaImport} disabled={importBusy}>
-              {importBusy ? "Importazione…" : "✓ Conferma import"}
-            </button>
-          </>
-        )}
       </div>
 
       <h2>Partite ({partite.length})</h2>
