@@ -378,18 +378,26 @@ function Login() {
 function RichiediAccesso({ email }) {
   const [nome, setNome] = useState("");
   const [messaggio, setMessaggio] = useState("");
+  const [lega, setLega] = useState(undefined); // undefined=verifica, null=nessun invito, {id,nome}
   const [stato, setStato] = useState(null); // null=verifica, 'nuova', 'inviata', 'errore'
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    supabase.from("richieste_accesso").select("stato")
-      .eq("email", (email || "").toLowerCase()).maybeSingle()
-      .then(({ data }) => setStato(data ? "inviata" : "nuova"));
+    const slug = new URLSearchParams(window.location.search).get("lega");
+    if (!slug) { setLega(null); setStato("nuova"); return; }
+    supabase.rpc("lega_da_slug", { p_slug: slug }).then(({ data }) => {
+      const l = (data || [])[0] || null;
+      setLega(l);
+      if (!l) { setStato("nuova"); return; }
+      supabase.from("richieste_accesso").select("stato")
+        .eq("email", (email || "").toLowerCase()).eq("lega_id", l.id).maybeSingle()
+        .then(({ data: r }) => setStato(r ? "inviata" : "nuova"));
+    });
   }, []);
 
   const invia = async () => {
     const { error } = await supabase.from("richieste_accesso").insert({
-      email: (email || "").toLowerCase(), nome, messaggio,
+      email: (email || "").toLowerCase(), nome, messaggio, lega_id: lega.id,
     });
     if (error) { setErr(tradErroreDb(error.message)); setStato("errore"); }
     else setStato("inviata");
@@ -398,12 +406,24 @@ function RichiediAccesso({ email }) {
   return (
     <div className="login">
       <h1>Scarsi <em>League</em></h1>
-      {stato === "inviata" ? (
+      {lega === undefined ? (
+        <p className="msg">Verifica in corso…</p>
+      ) : lega === null ? (
+        <>
+          <p className="season">Serve un invito</p>
+          <p className="msg">
+            L&apos;email <b>{email}</b> non è ancora tra i membri di nessuna lega.
+            Chiedi il link di invito a chi organizza la tua lega (di solito è un QR code
+            o un link con <code>?lega=...</code>).
+          </p>
+          <button onClick={() => supabase.auth.signOut()}>Esci</button>
+        </>
+      ) : stato === "inviata" ? (
         <>
           <p className="season">Richiesta inviata ✅</p>
           <p className="msg">
-            Alessandro deve approvarti — di solito lo fa prima del fischio d&apos;inizio.
-            Riapri il sito dopo l&apos;ok e sei dentro.
+            L&apos;admin di <b>{lega.nome}</b> deve approvarti — di solito lo fa prima del
+            fischio d&apos;inizio. Riapri il sito dopo l&apos;ok e sei dentro.
           </p>
           <button onClick={() => supabase.auth.signOut()}>Esci</button>
         </>
@@ -411,8 +431,8 @@ function RichiediAccesso({ email }) {
         <>
           <p className="season">Un ultimo passo</p>
           <p className="msg">
-            L&apos;email <b>{email}</b> non è ancora tra i membri.
-            Se giochi con noi, richiedi l&apos;accesso:
+            L&apos;email <b>{email}</b> non è ancora tra i membri di <b>{lega.nome}</b>.
+            Se giochi con loro, richiedi l&apos;accesso:
           </p>
           <input placeholder="Il tuo nome (come su Fubles)" value={nome}
             onChange={(e) => setNome(e.target.value)} />
@@ -471,8 +491,7 @@ export default function Home() {
   const [session, setSession] = useState(undefined); // undefined = loading
   const [consenso, setConsenso] = useState(null); // null = verifica, false = da accettare
   const [autorizzato, setAutorizzato] = useState(null); // null = verifica in corso
-  const [ruoloUtente, setRuoloUtente] = useState("membro");
-  const [mioGiocatoreId, setMioGiocatoreId] = useState(null);
+  const [mieMembri, setMieMembri] = useState([]); // righe membri_autorizzati dell'utente, una per lega
   const [leghe, setLeghe] = useState([]);
   const [legaId, setLegaId] = useState(null);
   const [stagioneId, setStagioneId] = useState(null); // null = non ancora scelta esplicitamente (default: stagione attiva)
@@ -510,17 +529,14 @@ export default function Home() {
       const { data: c } = await supabase.from("consensi").select("email").eq("email", mailC).maybeSingle();
       if (!c) { setConsenso(false); return; }
       setConsenso(true);
-      // 2) verifica whitelist: la RLS mostra solo la propria riga
+      // 2) verifica whitelist: la RLS mostra solo le proprie righe (una per lega)
       const mail = (session.user?.email || "").toLowerCase();
-      const { data: me } = await supabase
+      const { data: mie } = await supabase
         .from("membri_autorizzati")
-        .select("email, ruolo, giocatore_id")
-        .eq("email", mail)
-        .maybeSingle();
-      if (!me) { setAutorizzato(false); return; }
+        .select("email, lega_id, ruolo, giocatore_id");
+      if (!mie || !mie.length) { setAutorizzato(false); return; }
       setAutorizzato(true);
-      setRuoloUtente(me.ruolo || "membro");
-      setMioGiocatoreId(me.giocatore_id || null);
+      setMieMembri(mie);
       const [pa, gi, pr, vo, le, st, dm, pre] = await Promise.all([
         supabase.from("partite").select("*"),
         supabase.from("giocatori").select("*"),
@@ -544,6 +560,10 @@ export default function Home() {
   ), [raw, legaId]);
   const stagioneAttiva = stagioniLega.find((s) => s.attiva) || null;
   const stagioneSel = stagioneId ?? stagioneAttiva?.id ?? "all";
+
+  const mioMembro = useMemo(() => mieMembri.find((m) => m.lega_id === legaId) || null, [mieMembri, legaId]);
+  const ruoloUtente = mioMembro?.ruolo || "membro";
+  const mioGiocatoreId = mioMembro?.giocatore_id ?? null;
 
   const data = useMemo(() => {
     if (!raw || legaId == null) return null;

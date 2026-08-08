@@ -7,6 +7,7 @@ import AppNav from "../../components/AppNav";
 
 export default function Admin() {
   const [stato, setStato] = useState("verifica"); // verifica | no-login | no-admin | ok
+  const [adminLegaId, setAdminLegaId] = useState(null);
   const [richieste, setRichieste] = useState([]);
   const [membri, setMembri] = useState([]);
   const [leghe, setLeghe] = useState([]);
@@ -79,9 +80,11 @@ export default function Admin() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setStato("no-login"); return; }
       const mail = (session.user?.email || "").toLowerCase();
-      const { data: me } = await supabase.from("membri_autorizzati")
-        .select("ruolo").eq("email", mail).maybeSingle();
-      if (me?.ruolo !== "admin") { setStato("no-admin"); return; }
+      const { data: mie } = await supabase.from("membri_autorizzati")
+        .select("ruolo, lega_id").eq("email", mail);
+      const admin = (mie || []).find((m) => m.ruolo === "admin");
+      if (!admin) { setStato("no-admin"); return; }
+      setAdminLegaId(admin.lega_id);
       setStato("ok");
       carica();
     })();
@@ -119,7 +122,7 @@ export default function Admin() {
 
   const azione = async (fn, email) => {
     setMsg("");
-    const { data, error } = await supabase.rpc(fn, { p_email: email });
+    const { data, error } = await supabase.rpc(fn, { p_email: email, p_lega_id: adminLegaId });
     if (error || data !== "ok") setMsg("⚠ " + (error ? tradErroreDb(error.message) : data));
     else setMsg("✅ Fatto");
     carica();
@@ -127,7 +130,7 @@ export default function Admin() {
 
   const revoca = async (email) => {
     if (!confirm(`Revocare l'accesso a ${email}?`)) return;
-    const { error } = await supabase.from("membri_autorizzati").delete().eq("email", email);
+    const { error } = await supabase.from("membri_autorizzati").delete().eq("email", email).eq("lega_id", adminLegaId);
     setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Accesso revocato");
     carica();
   };

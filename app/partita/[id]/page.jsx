@@ -100,8 +100,8 @@ export default function Partita() {
       const { data: c } = await supabase.from("consensi").select("email").eq("email", mail).maybeSingle();
       if (!c) { setStato("no-consenso"); return; }
 
-      const { data: me } = await supabase.from("membri_autorizzati").select("email").eq("email", mail).maybeSingle();
-      if (!me) { setStato("no-membro"); return; }
+      const { data: me } = await supabase.from("membri_autorizzati").select("email").eq("email", mail);
+      if (!me || !me.length) { setStato("no-membro"); return; }
 
       const { data: p, error: pErr } = await supabase.from("partite").select("*").eq("id", id).maybeSingle();
       if (pErr) { setErrore(tradErroreDb(pErr.message)); setStato("errore"); return; }

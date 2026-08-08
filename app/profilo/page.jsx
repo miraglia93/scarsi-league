@@ -21,12 +21,13 @@ export default function Profilo() {
   const carica = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     const mail = (user?.email || "").toLowerCase();
-    const { data: m } = await supabase.from("membri_autorizzati")
-      .select("*").eq("email", mail).maybeSingle();
+    const { data: mie } = await supabase.from("membri_autorizzati")
+      .select("*").eq("email", mail);
+    const m = (mie || [])[0];
     if (!m) { setStato("no-membro"); return; }
     setMe(m);
     const [{ data: g }, { data: c }] = await Promise.all([
-      supabase.from("giocatori").select("*").order("nome"),
+      supabase.from("giocatori").select("*").eq("lega_id", m.lega_id).order("nome"),
       supabase.from("v_giocatori_claimed").select("*"),
     ]);
     setGiocatori(g || []);
@@ -53,7 +54,7 @@ export default function Profilo() {
 
   const claim = async (gid) => {
     setBusy(true); setMsg("");
-    const { data, error } = await supabase.rpc("claim_giocatore", { gid });
+    const { data, error } = await supabase.rpc("claim_giocatore", { gid, p_lega_id: me.lega_id });
     setBusy(false);
     if (error || data !== "ok") setMsg("⚠ " + (error ? tradErroreDb(error.message) : data));
     else { setMsg(gid ? "✅ Scheda collegata!" : "Scheda scollegata"); carica(); }
