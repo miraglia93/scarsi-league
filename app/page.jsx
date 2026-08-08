@@ -534,7 +534,8 @@ export default function Home() {
       const mail = (session.user?.email || "").toLowerCase();
       const { data: mie } = await supabase
         .from("membri_autorizzati")
-        .select("email, lega_id, ruolo, giocatore_id");
+        .select("email, lega_id, ruolo, giocatore_id")
+        .eq("email", mail);
       if (!mie || !mie.length) { setAutorizzato(false); return; }
       setAutorizzato(true);
       setMieMembri(mie);
