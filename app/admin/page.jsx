@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { tradErroreDb } from "../../lib/engine";
+import { parseImportFubles } from "../../lib/importFubles";
 import AppNav from "../../components/AppNav";
 
 export default function Admin() {
@@ -53,6 +54,14 @@ export default function Admin() {
   const [premioEtichetta, setPremioEtichetta] = useState("");
   const [premioEmoji, setPremioEmoji] = useState("");
   const [premioMsg, setPremioMsg] = useState("");
+
+  // ---------- import manuale Fubles ----------
+  const [importPartiteText, setImportPartiteText] = useState("");
+  const [importPrestazioniText, setImportPrestazioniText] = useState("");
+  const [importVotiText, setImportVotiText] = useState("");
+  const [importPreview, setImportPreview] = useState(null); // { parsed, nuoveMatchIds, nPartiteEsistenti, nGiocatoriNuovi }
+  const [importMsg, setImportMsg] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
 
   const carica = async () => {
     const [r, m, l, pa, gi, st, pr, prc] = await Promise.all([
@@ -150,6 +159,88 @@ export default function Admin() {
     setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Lega creata");
     setNomeLega(""); setSlugLega("");
     carica();
+  };
+
+  // ---------- import manuale Fubles ----------
+  const analizzaImport = () => {
+    setImportMsg("");
+    const parsed = parseImportFubles({
+      partiteText: importPartiteText, prestazioniText: importPrestazioniText, votiText: importVotiText, legaId: adminLegaId,
+    });
+    if (parsed.errori.length) { setImportPreview(null); setImportMsg("⚠ " + parsed.errori.join(" · ")); return; }
+    const matchIdsEsistenti = new Set(partite.map((p) => p.match_id));
+    const fublesIdEsistenti = new Set(giocatori.map((g) => g.fubles_user_id).filter(Boolean));
+    const nuoveMatchIds = new Set(parsed.partite.filter((p) => !matchIdsEsistenti.has(p.match_id)).map((p) => p.match_id));
+    const nPartiteEsistenti = parsed.partite.length - nuoveMatchIds.size;
+    const nGiocatoriNuovi = parsed.giocatoriNuovi.filter((g) => !fublesIdEsistenti.has(g.fubles_user_id)).length;
+    const nPrestazioni = parsed.prestazioni.filter((p) => nuoveMatchIds.has(p.match_id)).length;
+    const nVoti = parsed.voti.filter((v) => nuoveMatchIds.has(v.match_id)).length;
+    setImportPreview({ parsed, nuoveMatchIds, nPartiteEsistenti, nGiocatoriNuovi, nPrestazioni, nVoti });
+  };
+
+  const confermaImport = async () => {
+    if (!importPreview) return;
+    setImportBusy(true); setImportMsg("");
+    const { parsed, nuoveMatchIds } = importPreview;
+    try {
+      const partiteDaInserire = parsed.partite.filter((p) => nuoveMatchIds.has(p.match_id));
+      let matchIdAId = {};
+      if (partiteDaInserire.length) {
+        const { data: inserite, error } = await supabase.from("partite").insert(partiteDaInserire).select("id, match_id");
+        if (error) throw error;
+        (inserite || []).forEach((p) => { matchIdAId[p.match_id] = p.id; });
+      }
+
+      const fublesIdAId = {};
+      giocatori.forEach((g) => { if (g.fubles_user_id) fublesIdAId[g.fubles_user_id] = g.id; });
+      const giocatoriDaCreare = parsed.giocatoriNuovi.filter((g) => !fublesIdAId[g.fubles_user_id]);
+      if (giocatoriDaCreare.length) {
+        const { data: creati, error } = await supabase.from("giocatori").insert(
+          giocatoriDaCreare.map((g) => ({
+            nome: g.nome, lega_id: adminLegaId, fubles_user_id: g.fubles_user_id,
+            fubles_url: g.fubles_url, ruolo_prevalente: g.ruolo_prevalente, foto_disponibile: g.foto_disponibile,
+          })),
+        ).select("id, fubles_user_id");
+        if (error) throw error;
+        (creati || []).forEach((g) => { fublesIdAId[g.fubles_user_id] = g.id; });
+      }
+
+      const prestazioniDaInserire = parsed.prestazioni
+        .filter((p) => nuoveMatchIds.has(p.match_id) && matchIdAId[p.match_id] && fublesIdAId[p.fubles_user_id])
+        .map((p) => ({
+          partita_id: matchIdAId[p.match_id], giocatore_id: fublesIdAId[p.fubles_user_id],
+          squadra: p.squadra, ruolo: p.ruolo, voto: p.voto, gol: p.gol, motm: p.motm,
+          premio: p.premio, esito: p.esito, gol_squadra: p.gol_squadra, gol_subiti: p.gol_subiti, note: p.note,
+        }));
+      if (prestazioniDaInserire.length) {
+        const { error } = await supabase.from("prestazioni").upsert(prestazioniDaInserire, { onConflict: "partita_id,giocatore_id" });
+        if (error) throw error;
+      }
+
+      const votiDaInserire = parsed.voti
+        .filter((v) => nuoveMatchIds.has(v.match_id) && matchIdAId[v.match_id] && fublesIdAId[v.valutato_fubles_user_id] && fublesIdAId[v.votante_fubles_user_id])
+        .map((v) => ({
+          partita_id: matchIdAId[v.match_id], valutato_id: fublesIdAId[v.valutato_fubles_user_id],
+          votante_id: fublesIdAId[v.votante_fubles_user_id], voto: v.voto, commento: v.commento,
+        }));
+      if (votiDaInserire.length) {
+        const { error } = await supabase.from("voti_ricevuti").insert(votiDaInserire);
+        if (error) throw error;
+      }
+
+      await supabase.from("import_log").insert({
+        fonte: "admin-ui-import",
+        errori: `Import manuale: ${partiteDaInserire.length} partite, ${giocatoriDaCreare.length} giocatori nuovi, ${prestazioniDaInserire.length} prestazioni, ${votiDaInserire.length} voti.`,
+      });
+
+      setImportMsg(`✅ Importate ${partiteDaInserire.length} partite, ${giocatoriDaCreare.length} giocatori nuovi, ${prestazioniDaInserire.length} prestazioni, ${votiDaInserire.length} voti.`);
+      setImportPreview(null);
+      setImportPartiteText(""); setImportPrestazioniText(""); setImportVotiText("");
+      carica();
+    } catch (error) {
+      setImportMsg("⚠ " + tradErroreDb(error.message));
+    }
+    setImportBusy(false);
   };
 
   const toggleAbbonamento = async (email, attivo) => {
@@ -478,6 +569,40 @@ export default function Admin() {
         <input type="date" value={nuovaStagioneFine} onChange={(e) => setNuovaStagioneFine(e.target.value)} />
         <button className="mini ok" style={{ marginTop: 10 }} onClick={creaStagione}
           disabled={!nuovaStagioneLega || !nuovaStagioneNome || !nuovaStagioneInizio}>+ Crea stagione</button>
+      </div>
+
+      <h2>Importa partite</h2>
+      <p className="season">
+        Incolla il testo copiato dai fogli dell&apos;estrazione Fubles (seleziona le celle,
+        incluse le intestazioni, e copia/incolla qui). VOTI_RICEVUTI è opzionale.
+      </p>
+      <div className="betaform">
+        <label className="flabel">PARTITE</label>
+        <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+          value={importPartiteText} onChange={(e) => { setImportPartiteText(e.target.value); setImportPreview(null); }} />
+        <label className="flabel">PRESTAZIONI_GIOCATORI</label>
+        <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+          value={importPrestazioniText} onChange={(e) => { setImportPrestazioniText(e.target.value); setImportPreview(null); }} />
+        <label className="flabel">VOTI_RICEVUTI (opzionale)</label>
+        <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+          value={importVotiText} onChange={(e) => { setImportVotiText(e.target.value); setImportPreview(null); }} />
+        <button className="mini" style={{ marginTop: 10 }} onClick={analizzaImport}
+          disabled={!importPartiteText || !importPrestazioniText}>Analizza</button>
+        {importMsg && <div className="note">{importMsg}</div>}
+        {importPreview && (
+          <>
+            <div className="note">
+              {importPreview.parsed.partite.length - importPreview.nPartiteEsistenti} partite nuove
+              {importPreview.nPartiteEsistenti > 0 && ` (${importPreview.nPartiteEsistenti} già presenti, saltate insieme alle relative prestazioni/voti)`}
+              · {importPreview.nGiocatoriNuovi} giocatori nuovi
+              · {importPreview.nPrestazioni} prestazioni
+              · {importPreview.nVoti} voti
+            </div>
+            <button className="mini ok" onClick={confermaImport} disabled={importBusy}>
+              {importBusy ? "Importazione…" : "✓ Conferma import"}
+            </button>
+          </>
+        )}
       </div>
 
       <h2>Partite ({partite.length})</h2>
