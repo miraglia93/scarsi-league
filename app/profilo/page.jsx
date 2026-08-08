@@ -162,12 +162,12 @@ export default function Profilo() {
               <label className="flabel">Numero di maglia</label>
               <input type="number" min="1" max="99" placeholder="93" value={numero} onChange={(e) => setNumero(e.target.value)} />
               <label className="flabel">Ruolo preferito</label>
-              <select value={ruolo} onChange={(e) => setRuolo(e.target.value)}>
-                <option value="POR">Portiere</option>
-                <option value="DIF">Difensore</option>
-                <option value="CEN">Centrocampista</option>
-                <option value="ATT">Attaccante</option>
-              </select>
+              <span className="toggle">
+                <button type="button" title="Portiere" className={ruolo === "POR" ? "on" : ""} onClick={() => setRuolo("POR")}>POR</button>
+                <button type="button" title="Difensore" className={ruolo === "DIF" ? "on" : ""} onClick={() => setRuolo("DIF")}>DIF</button>
+                <button type="button" title="Centrocampista" className={ruolo === "CEN" ? "on" : ""} onClick={() => setRuolo("CEN")}>CEN</button>
+                <button type="button" title="Attaccante" className={ruolo === "ATT" ? "on" : ""} onClick={() => setRuolo("ATT")}>ATT</button>
+              </span>
               <button className="mini ok" style={{ marginTop: 14 }} onClick={salva} disabled={busy}>💾 Salva profilo</button>
             </div>
           </div>

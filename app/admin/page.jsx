@@ -726,11 +726,12 @@ export default function Admin() {
               {giocatori.map((g) => <option key={g.id} value={g.id}>{g.nickname || g.nome}</option>)}
             </select>
             <input placeholder='Tipo — es. "miglior_portiere", "gol_del_mese"' value={premioTipo} onChange={(e) => setPremioTipo(e.target.value)} />
-            <select value={premioPeriodo} onChange={(e) => setPremioPeriodo(e.target.value)}>
-              <option value="partita">Partita</option>
-              <option value="mese">Mese</option>
-              <option value="stagione">Stagione</option>
-            </select>
+            <label className="flabel">Periodo</label>
+            <span className="toggle">
+              <button type="button" className={premioPeriodo === "partita" ? "on" : ""} onClick={() => setPremioPeriodo("partita")}>Partita</button>
+              <button type="button" className={premioPeriodo === "mese" ? "on" : ""} onClick={() => setPremioPeriodo("mese")}>Mese</button>
+              <button type="button" className={premioPeriodo === "stagione" ? "on" : ""} onClick={() => setPremioPeriodo("stagione")}>Stagione</button>
+            </span>
             {premioPeriodo === "partita" && (
               <select value={premioPartitaId} onChange={(e) => setPremioPartitaId(e.target.value)}>
                 <option value="">— Partita —</option>
