@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth, distribuzioneVoti, computeAndamento } from "../lib/engine";
+import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth, distribuzioneVoti, computeAndamento, computeXP, computeLivello } from "../lib/engine";
 import PlayerCard from "../components/PlayerCard";
 import FormaDots from "../components/FormaDots";
 import MiniTable from "../components/MiniTable";
@@ -97,7 +97,7 @@ function MiniChart({ titolo, valori, colore, confronto }) {
 }
 
 /* ---------- dettaglio giocatore: riusato sia per il drill-down dalle liste, sia per "Tu" ---------- */
-function DettaglioGiocatore({ s, players, S, VOTES, rel, PREMI, ruoloUtente, mostraMenu }) {
+function DettaglioGiocatore({ s, players, S, VOTES, rel, PREMI, ruoloUtente, mostraMenu, xp }) {
   const badges = computeBadges(s, players);
   const premi = PREMI.filter((p) => p.giocatore_id === s.id);
   const { mean, std } = distribuzioneVoti(players);
@@ -116,8 +116,32 @@ function DettaglioGiocatore({ s, players, S, VOTES, rel, PREMI, ruoloUtente, mos
 
   return (
     <div className="detail">
-      <PlayerCard s={s} badges={badges} />
+      <PlayerCard s={s} badges={badges} livello={xp?.livello?.nome} />
       <div>
+        {mostraMenu && xp && (
+          <div className="xpcard">
+            <div className="xp-top">
+              <span className="xp-livello">{xp.livello.nome}</span>
+              <span className="xp-totale"><b>{xp.totale}</b> XP totali (all-time)</span>
+            </div>
+            <div className="xpbar"><i style={{ width: `${Math.round(xp.livello.progresso * 100)}%` }} /></div>
+            <div className="xp-prossimo">
+              {xp.livello.prossimoNome
+                ? `${xp.totale} / ${xp.livello.sogliaProssimo} XP verso "${xp.livello.prossimoNome}"`
+                : "Livello massimo raggiunto 🏆"}
+            </div>
+            <div className="xp-ripartizione">
+              <div><b>{xp.ripartizione.presenze || 0}</b><span>Presenze</span></div>
+              <div><b>{xp.ripartizione.vittorie || 0}</b><span>Risultati</span></div>
+              <div><b>{xp.ripartizione.gol || 0}</b><span>Gol</span></div>
+              <div><b>{xp.ripartizione.assist || 0}</b><span>Assist</span></div>
+              <div><b>{xp.ripartizione.mvp || 0}</b><span>MVP</span></div>
+              <div><b>{xp.ripartizione.voto || 0}</b><span>Voti alti</span></div>
+              <div><b>{xp.ripartizione.cleanSheet || 0}</b><span>Clean sheet</span></div>
+            </div>
+            <div className="xp-nota">XP cumulativo di tutte le stagioni — non cambia con il selettore stagione qui sopra.</div>
+          </div>
+        )}
         <div className="kv">
           <div className="stat"><b>{s.presenze}</b><span>Presenze</span></div>
           <div className="stat"><b>{s.w}-{s.d}-{s.l}</b><span>V-N-P</span></div>
@@ -536,6 +560,30 @@ export default function Home() {
   const S = useMemo(() => (data && !data.vuota ? buildStats(data.P, data.matches) : null), [data]);
   const rel = useMemo(() => (data ? pairAndNemesis(data.matches) : null), [data]);
 
+  // XP: sempre all-time, mai filtrato per stagione (è la progressione del giocatore).
+  const dataAllTime = useMemo(() => {
+    if (!raw || legaId == null) return null;
+    const gi = raw.gi.filter((g) => g.lega_id === legaId);
+    const pa = raw.pa.filter((p) => p.lega_id === legaId);
+    if (!pa.length) return null;
+    const paIds = new Set(pa.map((p) => p.id));
+    const pr = raw.pr.filter((p) => paIds.has(p.partita_id));
+    const vo = raw.vo.filter((v) => paIds.has(v.partita_id));
+    return assemble(pa, gi, pr, vo);
+  }, [raw, legaId]);
+  const SAllTime = useMemo(() => (dataAllTime ? buildStats(dataAllTime.P, dataAllTime.matches) : null), [dataAllTime]);
+  const dmAllTimeByChiave = useMemo(() => {
+    const m = {};
+    (raw?.dm || []).forEach((d) => { m[`${d.partita_id}_${d.giocatore_id}`] = d; });
+    return m;
+  }, [raw]);
+  const xpDiGiocatore = (id) => {
+    const s = SAllTime?.[id];
+    if (!s || !s.storico?.length) return { totale: 0, ripartizione: {}, livello: computeLivello(0) };
+    const { totale, ripartizione } = computeXP(s, dmAllTimeByChiave);
+    return { totale, ripartizione, livello: computeLivello(totale) };
+  };
+
   const naviga = (key) => {
     setSel(null);
     setSezione(key);
@@ -673,7 +721,7 @@ export default function Home() {
                     <div className="potmcard">
                       <div className="potm-wrap">
                         <span className="potm-ribbon">🏅 POTM</span>
-                        <PlayerCard s={potm} badges={computeBadges(potm, players)} onClick={() => setSel(potm.id)} />
+                        <PlayerCard s={potm} badges={computeBadges(potm, players)} livello={xpDiGiocatore(potm.id).livello.nome} onClick={() => setSel(potm.id)} />
                       </div>
                       <div className="potm-stats">
                         <div className="stat"><b>{potmDati.mediaVoto.toFixed(2)}</b><span>Media voto del mese</span></div>
@@ -839,6 +887,14 @@ export default function Home() {
                     rows={Object.entries(cleanSheetTotali).sort((a, b) => b[1] - a[1]).slice(0, 8)
                       .map(([gid, n]) => [S[gid]?.nome || "—", n, S[gid]?.presenze || 0])} />
                 )}
+                {SAllTime && (
+                  <MiniTable title="🎮 Classifica XP" note="Cumulativa all-time, non filtrata per stagione"
+                    cols={["Giocatore", "XP", "Livello"]}
+                    rows={Object.values(SAllTime).filter((p) => p.presenze > 0)
+                      .map((p) => ({ p, xp: xpDiGiocatore(p.id) }))
+                      .sort((a, b) => b.xp.totale - a.xp.totale).slice(0, 8)
+                      .map(({ p, xp }) => [p.nome, xp.totale, xp.livello.nome])} />
+                )}
               </div>
             )}
 
@@ -889,7 +945,7 @@ export default function Home() {
             </h2>
             <div className="grid">
               {[...shown].sort((a, b) => b.overall - a.overall).map((p) => (
-                <PlayerCard key={p.id} s={p} badges={computeBadges(p, players)} onClick={() => setSel(p.id)} />
+                <PlayerCard key={p.id} s={p} badges={computeBadges(p, players)} livello={xpDiGiocatore(p.id).livello.nome} onClick={() => setSel(p.id)} />
               ))}
             </div>
           </>
@@ -910,7 +966,7 @@ export default function Home() {
             <>
               <h2>La tua bacheca</h2>
               <DettaglioGiocatore s={mioStats} players={players} S={S} VOTES={VOTES} rel={rel} PREMI={PREMI}
-                ruoloUtente={ruoloUtente} mostraMenu />
+                ruoloUtente={ruoloUtente} mostraMenu xp={xpDiGiocatore(mioStats.id)} />
             </>
           )
         )}
@@ -919,7 +975,7 @@ export default function Home() {
           <>
             <button className="back" onClick={() => setSel(null)}>← Indietro</button>
             <DettaglioGiocatore s={selS} players={players} S={S} VOTES={VOTES} rel={rel} PREMI={PREMI}
-              ruoloUtente={ruoloUtente} mostraMenu={false} />
+              ruoloUtente={ruoloUtente} mostraMenu={false} xp={xpDiGiocatore(selS.id)} />
           </>
         )}
       </div>

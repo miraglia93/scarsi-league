@@ -1,6 +1,6 @@
 import { tier, cardStats } from "../lib/engine";
 
-export default function PlayerCard({ s, size = "lg", onClick, badges }) {
+export default function PlayerCard({ s, size = "lg", onClick, badges, livello }) {
   const t = tier(s.overall);
   return (
     <div className={`fut ${t} ${size}`} onClick={onClick} role={onClick ? "button" : undefined} tabIndex={onClick ? 0 : undefined}
@@ -14,6 +14,7 @@ export default function PlayerCard({ s, size = "lg", onClick, badges }) {
         ? <img className="fut-foto" src={s.foto} alt={s.nome} />
         : <div className="fut-avatar">{s.nome.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}</div>}
       <div className="fut-name" title={s.nome}>{s.nick || s.nome}</div>
+      {livello && <div className="fut-livello">{livello}</div>}
       {badges && badges.length > 0 && (
         <div className="fut-badges">
           {badges.map((b) => <span key={b.id} className="fut-badge" title={b.nome}>{b.icon}</span>)}

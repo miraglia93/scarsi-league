@@ -219,6 +219,8 @@ a.hero:hover{border-color:rgba(227,197,103,.4);}
 .badge.bronze{border-color:#B08860;color:#E8CBA8;}
 .fut-badges{display:flex;justify-content:center;gap:5px;margin-top:6px;}
 .fut-badge{font-size:13px;cursor:default;}
+.fut-livello{text-align:center;font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:#9DA88F;margin-top:3px;}
 
 /* v0.9 — auth email+password */
 .pwdfield{position:relative;}
@@ -375,3 +377,19 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 .matchcard .mc-mid span:nth-child(1),.matchcard .mc-mid span:nth-child(3){overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;}
 .matchcard .mc-arrow{color:#5F6862;flex-shrink:0;}
+
+/* v1.0 — XP e livelli */
+.xpcard{background:linear-gradient(160deg,#1B2A18,#101810);border:1.5px solid rgba(92,191,122,.4);
+  border-radius:14px;padding:20px;margin-bottom:8px;}
+.xpcard .xp-top{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.xpcard .xp-livello{font-family:'Anton';font-size:28px;color:#F5E9C0;text-transform:uppercase;letter-spacing:.02em;}
+.xpcard .xp-totale{font-size:13px;color:#8FA096;}
+.xpcard .xp-totale b{color:#E3C567;font-family:'Anton';font-size:16px;}
+.xpbar{height:10px;border-radius:6px;background:rgba(0,0,0,.4);margin:12px 0 6px;overflow:hidden;}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,#3B6D11,#5CBF7A);font-style:normal;}
+.xp-prossimo{font-size:11px;color:#8FA096;}
+.xp-nota{font-size:10px;color:#5F6862;margin-top:10px;letter-spacing:.02em;}
+.xp-ripartizione{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin-top:14px;}
+.xp-ripartizione div{background:rgba(0,0,0,.2);border-radius:8px;padding:8px 6px;text-align:center;}
+.xp-ripartizione b{display:block;font-family:'Anton';font-size:16px;color:#E8EDE6;}
+.xp-ripartizione span{font-size:9px;color:#8FA096;letter-spacing:.06em;text-transform:uppercase;}
