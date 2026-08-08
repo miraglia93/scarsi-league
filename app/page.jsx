@@ -9,7 +9,7 @@ import MiniTable from "../components/MiniTable";
 import AppNav from "../components/AppNav";
 import SubTabs from "../components/SubTabs";
 import ContextBar from "../components/ContextBar";
-import { IconEdit, IconLock, IconLogout, IconMedal } from "../components/icons";
+import { IconEdit, IconLock, IconLogout, IconMedal, IconShield } from "../components/icons";
 
 /* ============================================================
    SCARSI LEAGUE — Next.js + Supabase (dati live)
@@ -183,6 +183,7 @@ function DettaglioGiocatore({ s, players, S, VOTES, rel, PREMI, ruoloUtente, mos
           <div className="menulist">
             <a className="menu-item" href="/profilo"><IconEdit /> Modifica profilo</a>
             <a className="menu-item" href="/privacy"><IconLock /> Privacy</a>
+            <a className="menu-item" href="/crea-lega"><IconShield /> Crea una lega</a>
             {ruoloUtente === "admin" && <a className="menu-item" href="/admin"><IconMedal /> Admin<span className="hint">solo admin</span></a>}
             <button type="button" className="menu-item danger" onClick={() => supabase.auth.signOut()}><IconLogout /> Esci</button>
           </div>

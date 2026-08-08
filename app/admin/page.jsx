@@ -8,6 +8,8 @@ import AppNav from "../../components/AppNav";
 export default function Admin() {
   const [stato, setStato] = useState("verifica"); // verifica | no-login | no-admin | ok
   const [adminLegaId, setAdminLegaId] = useState(null);
+  const [superAdmin, setSuperAdmin] = useState(false);
+  const [utentiPiattaforma, setUtentiPiattaforma] = useState([]);
   const [richieste, setRichieste] = useState([]);
   const [membri, setMembri] = useState([]);
   const [leghe, setLeghe] = useState([]);
@@ -75,6 +77,11 @@ export default function Admin() {
     setPrestazioniConteggio(conteggio);
   };
 
+  const caricaPiattaforma = async () => {
+    const { data } = await supabase.from("utenti_piattaforma").select("*").order("creato_il");
+    setUtentiPiattaforma(data || []);
+  };
+
   useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -85,6 +92,9 @@ export default function Admin() {
       const admin = (mie || []).find((m) => m.ruolo === "admin");
       if (!admin) { setStato("no-admin"); return; }
       setAdminLegaId(admin.lega_id);
+      const { data: isSuper } = await supabase.rpc("is_super_admin");
+      setSuperAdmin(!!isSuper);
+      if (isSuper) caricaPiattaforma();
       setStato("ok");
       carica();
     })();
@@ -136,10 +146,16 @@ export default function Admin() {
   };
 
   const creaLega = async () => {
-    const { error } = await supabase.from("leghe").insert({ nome: nomeLega, slug: slugLega.toLowerCase() });
+    const { error } = await supabase.rpc("crea_lega", { p_nome: nomeLega, p_slug: slugLega.toLowerCase(), p_struttura: null });
     setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Lega creata");
     setNomeLega(""); setSlugLega("");
     carica();
+  };
+
+  const toggleAbbonamento = async (email, attivo) => {
+    const { error } = await supabase.from("utenti_piattaforma").update({ abbonamento_attivo: attivo }).eq("email", email);
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Abbonamento aggiornato");
+    caricaPiattaforma();
   };
 
   const aggiornaRiga = (giocatoreId, campo, valore) => {
@@ -310,6 +326,34 @@ export default function Admin() {
         <span className="season"><a className="plink" href="/?sezione=tu">← Torna alla bacheca</a></span>
       </div>
       {msg && <div className="note" style={{ marginTop: 12 }}>{msg}</div>}
+
+      {superAdmin && (
+        <>
+          <h2>Piattaforma — abbonamenti ({utentiPiattaforma.length})</h2>
+          {utentiPiattaforma.length === 0 ? (
+            <p className="season">Nessuna richiesta di abbonamento ancora.</p>
+          ) : (
+            <table>
+              <thead><tr><th>Email</th><th>Piano</th><th>Abbonamento</th><th>Dal</th><th></th></tr></thead>
+              <tbody>
+                {utentiPiattaforma.map((u) => (
+                  <tr key={u.email}>
+                    <td>{u.email}</td>
+                    <td>{u.piano}{u.super_admin ? " · super admin" : ""}</td>
+                    <td>{u.abbonamento_attivo ? "🟢 attivo" : "⚪ non attivo"}</td>
+                    <td>{new Date(u.creato_il).toLocaleDateString("it-IT")}</td>
+                    <td>
+                      {u.abbonamento_attivo
+                        ? <button className="mini no" onClick={() => toggleAbbonamento(u.email, false)}>Disattiva</button>
+                        : <button className="mini ok" onClick={() => toggleAbbonamento(u.email, true)}>Attiva</button>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
 
       <h2>Richieste in attesa ({inAttesa.length})</h2>
       {inAttesa.length === 0 ? (
