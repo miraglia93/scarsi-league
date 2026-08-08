@@ -344,6 +344,8 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 .ctxstrip select.ctx-stagione{margin-left:0;background:none;border:none;color:#E3C567;
   font-family:'Anton';font-size:13px;letter-spacing:.03em;font-weight:400;padding:0;
   -webkit-appearance:none;appearance:none;cursor:pointer;}
+.ctx-stagione-wrap{display:inline-flex;align-items:center;gap:5px;cursor:pointer;}
+.ctx-arrow{color:#E3C567;font-size:9px;opacity:.85;}
 
 /* v1.0 — bacheca "Tu" */
 .tucard{background:linear-gradient(160deg,#2E2708,#171408);border:1.5px solid #E3C567;
