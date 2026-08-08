@@ -72,4 +72,25 @@ test("VOTI_RICEVUTI vuoto è accettato (è opzionale)", () => {
   assertEqual(r4.voti, []);
 });
 
+test("blocca (non importa a metà) se lo stesso match_id compare due volte in PARTITE", () => {
+  const partiteConDuplicato = partiteText + "\n" + partiteText.split("\n")[1];
+  const r5 = parseImportFubles({ partiteText: partiteConDuplicato, prestazioniText, votiText, legaId: 1 });
+  assert(r5.errori.length > 0, "un match_id duplicato nello stesso incolla deve dare errore");
+  assertEqual(r5.partite, []);
+});
+
+test("intestazioni con maiuscole/spazi diversi vengono riconosciute lo stesso", () => {
+  const partiteMaiuscolo = partiteText.replace("match_id\t", "Match ID\t").replace("squadra_1\t", "Squadra_1\t");
+  const r6 = parseImportFubles({ partiteText: partiteMaiuscolo, prestazioniText, votiText, legaId: 1 });
+  assertEqual(r6.errori, []);
+  assertEqual(r6.partite[0].match_id, "2026-07-20_BETTINELLI_BIANCHI-NERI");
+});
+
+test("avvisa (senza bloccare) se una riga di PRESTAZIONI_GIOCATORI non ha un profilo_fubles valido", () => {
+  const prestazioniConRigaRotta = prestazioniText + "\n2026-07-20_BETTINELLI_BIANCHI-NERI\t20/07/2026\thttps://app.fubles.com/it/app/matches/3149865\tSenza Link\t\tBianchi\tDifensore\t6\t0\tNo\t\tVittoria\t6\t5\tNON DISPONIBILE\t";
+  const r7 = parseImportFubles({ partiteText, prestazioniText: prestazioniConRigaRotta, votiText, legaId: 1 });
+  assertEqual(r7.errori, []);
+  assert(r7.avvisi.some((a) => a.includes("PRESTAZIONI_GIOCATORI")), "dovrebbe avvisare della riga senza profilo_fubles");
+});
+
 export const ok = riepilogo("importFubles.test.mjs");

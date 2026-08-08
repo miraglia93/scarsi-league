@@ -445,6 +445,9 @@ export default function Admin() {
               · {importPreview.nPrestazioni} prestazioni
               · {importPreview.nVoti} voti
             </div>
+            {importPreview.parsed.avvisi.map((a, i) => (
+              <div key={i} className="note">⚠ {a}</div>
+            ))}
             <button className="mini ok" onClick={confermaImport} disabled={importBusy}>
               {importBusy ? "Importazione…" : "✓ Conferma import"}
             </button>
