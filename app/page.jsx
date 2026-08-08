@@ -507,6 +507,12 @@ export default function Home() {
   const [totwId, setTotwId] = useState(null);
   const [soloRegulars, setSoloRegulars] = useState(true);
 
+  // ---------- notifiche in-app (solo locali, nessun servizio esterno) ----------
+  const [richiesteInAttesa, setRichiesteInAttesa] = useState(0);
+  const [notificaPartite, setNotificaPartite] = useState(false);
+  const [notificaPremio, setNotificaPremio] = useState(false);
+  const [benvenutoVisibile, setBenvenutoVisibile] = useState(false);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
@@ -567,6 +573,61 @@ export default function Home() {
   const mioMembro = useMemo(() => mieMembri.find((m) => m.lega_id === legaId) || null, [mieMembri, legaId]);
   const ruoloUtente = mioMembro?.ruolo || "membro";
   const mioGiocatoreId = mioMembro?.giocatore_id ?? null;
+
+  // richieste in attesa (solo per l'admin, per il pallino su "Tu")
+  useEffect(() => {
+    if (!legaId || ruoloUtente !== "admin") { setRichiesteInAttesa(0); return; }
+    supabase.from("richieste_accesso").select("id", { count: "exact", head: true })
+      .eq("lega_id", legaId).eq("stato", "in_attesa")
+      .then(({ count }) => setRichiesteInAttesa(count || 0));
+  }, [legaId, ruoloUtente]);
+
+  // benvenuto la prima volta che si vede la lega da approvati (una volta per lega, per browser)
+  useEffect(() => {
+    if (autorizzato !== true || legaId == null) return;
+    const chiave = `sl_benvenuto_${legaId}`;
+    if (!localStorage.getItem(chiave)) {
+      localStorage.setItem(chiave, "1");
+      setBenvenutoVisibile(true);
+    }
+  }, [autorizzato, legaId]);
+
+  // nuova partita importata (per pallino su "Partite"): confronta l'ultima
+  // partita della lega con l'ultima vista salvata localmente
+  useEffect(() => {
+    if (!raw || legaId == null) { setNotificaPartite(false); return; }
+    const pa = raw.pa.filter((p) => p.lega_id === legaId);
+    if (!pa.length) { setNotificaPartite(false); return; }
+    const ultima = [...pa].sort((a, b) => (a.data < b.data ? -1 : 1)).slice(-1)[0];
+    setNotificaPartite(localStorage.getItem(`sl_ultima_partita_${legaId}`) !== String(ultima.id));
+  }, [raw, legaId]);
+  useEffect(() => {
+    if (sezione !== "partite" || !raw || legaId == null) return;
+    const pa = raw.pa.filter((p) => p.lega_id === legaId);
+    if (!pa.length) return;
+    const ultima = [...pa].sort((a, b) => (a.data < b.data ? -1 : 1)).slice(-1)[0];
+    localStorage.setItem(`sl_ultima_partita_${legaId}`, String(ultima.id));
+    setNotificaPartite(false);
+  }, [sezione, raw, legaId]);
+
+  // nuovo premio assegnato a me (per pallino su "Tu")
+  useEffect(() => {
+    if (!raw || legaId == null || mioGiocatoreId == null) { setNotificaPremio(false); return; }
+    const miei = raw.premi.filter((p) => p.lega_id === legaId && p.giocatore_id === mioGiocatoreId);
+    if (!miei.length) { setNotificaPremio(false); return; }
+    const ultimo = [...miei].sort((a, b) => (a.assegnato_il < b.assegnato_il ? -1 : 1)).slice(-1)[0];
+    setNotificaPremio(localStorage.getItem(`sl_ultimo_premio_${legaId}_${mioGiocatoreId}`) !== String(ultimo.id));
+  }, [raw, legaId, mioGiocatoreId]);
+  useEffect(() => {
+    if (sezione !== "tu" || !raw || legaId == null || mioGiocatoreId == null) return;
+    const miei = raw.premi.filter((p) => p.lega_id === legaId && p.giocatore_id === mioGiocatoreId);
+    if (!miei.length) return;
+    const ultimo = [...miei].sort((a, b) => (a.assegnato_il < b.assegnato_il ? -1 : 1)).slice(-1)[0];
+    localStorage.setItem(`sl_ultimo_premio_${legaId}_${mioGiocatoreId}`, String(ultimo.id));
+    setNotificaPremio(false);
+  }, [sezione, raw, legaId, mioGiocatoreId]);
+
+  const notifiche = { partite: notificaPartite, tu: (ruoloUtente === "admin" && richiesteInAttesa > 0) || notificaPremio };
 
   const data = useMemo(() => {
     if (!raw || legaId == null) return null;
@@ -647,7 +708,7 @@ export default function Home() {
     const linkInvito = legaCorrente ? `${typeof window !== "undefined" ? window.location.origin : ""}/?lega=${legaCorrente.slug}` : "";
     return (
       <>
-        <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} />
+        <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} notifiche={notifiche} />
         <div className="wrap navpad">
           <div className="brand"><h1>Scarsi <em>League</em></h1></div>
           <ContextBar stagioni={stagioniLega} stagioneSel={stagioneSel}
@@ -741,17 +802,26 @@ export default function Home() {
   const selS = sel != null ? S[sel] : null;
   const mioStats = mioGiocatoreId != null ? players.find((p) => p.id === mioGiocatoreId) : null;
 
+  const legaCorrente = leghe.find((l) => l.id === legaId);
+
   return (
     <>
-      <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} />
+      <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} notifiche={notifiche} />
       <div className="wrap navpad">
         <header>
           <div className="brand">
             <h1>Scarsi <em>League</em></h1>
-            <span className="season">Calci8Lunedì · Bettinelli</span>
+            <span className="season">{legaCorrente?.nome}{legaCorrente?.struttura ? ` · ${legaCorrente.struttura}` : ""}</span>
           </div>
           <span className="livebadge">● DATI LIVE DA SUPABASE</span>
         </header>
+
+        {benvenutoVisibile && (
+          <div className="note" style={{ marginBottom: 12 }}>
+            🎉 Sei dentro <b>{legaCorrente?.nome}</b>! Dai un&apos;occhiata in giro.
+            <button type="button" className="mini" style={{ marginLeft: 10 }} onClick={() => setBenvenutoVisibile(false)}>Ok</button>
+          </div>
+        )}
 
         <ContextBar stagioni={stagioniLega} stagioneSel={stagioneSel}
           onStagioneChange={(v) => setStagioneId(v)}
