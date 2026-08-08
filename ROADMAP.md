@@ -3,7 +3,7 @@
 Derivata dal documento di visione (19 sezioni). Priorità decise con Alessandro.
 Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
 
-## ✅ Già fatto (v0.1 → v0.9.0)
+## ✅ Già fatto (v0.1 → v1.0.0)
 
 - Home lega: hero ultima partita, statistiche, classifica generale con forma,
   AI insight (§1 in parte)
@@ -30,15 +30,24 @@ Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
   clean sheet, Player of the Month automatico con carta speciale (§4/§8) ·
   premi in bacheca profilo e pagina partita · grafici SVG andamento
   voto/overall nel profilo (§3 andamento)
+- **v1.0 "Il Debutto"**: redesign navigazione a due livelli (5 voci
+  principali con icone disegnate su misura, tab bar fissa su mobile,
+  barra orizzontale su desktop, sotto-tab per sezione, barra di
+  contesto stagione/lega) su tutte le pagine · XP e livelli calcolati
+  automaticamente dai dati esistenti, sempre all-time, con progressione
+  Esordiente→Leggenda mostrata in "Tu", su ogni carta e in classifica
+  (§6) · login solo email+password con conferma email e magic link di
+  riserva, Google disattivabile con una riga · errori tradotti in
+  italiano ovunque, stati vuoti gestiti con eleganza, meta/OpenGraph e
+  favicon a tema
 
-## v1.0 — "La Piattaforma"
+## v1.1 — "La Piattaforma"
 
 - Dashboard organizzatore completa: affidabilità giocatori (dato privato),
   no-show, note interne (§10) — ⚠ NIENTE gestione pagamenti reali per ora:
   solo flag pagato/non pagato manuale, nessun movimento di denaro
 - Wizard "Crea la tua lega" completo con inviti (§18)
 - Ruoli: organizzatore/collaboratore oltre ad admin/membro (§19)
-- XP e livelli (Esordiente→Leggenda) (§6)
 - Eventi speciali: Christmas Cup, tornei con classifiche separate (§15)
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
