@@ -1,11 +1,12 @@
 {
   "name": "scarsi-league",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node tests/run.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
