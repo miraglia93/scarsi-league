@@ -7,7 +7,9 @@ import AppNav from "../../components/AppNav";
 
 export default function Profilo() {
   const [stato, setStato] = useState("verifica"); // verifica | no-login | no-membro | ok
-  const [me, setMe] = useState(null);            // riga membri_autorizzati
+  const [mieMembri, setMieMembri] = useState([]); // righe membri_autorizzati dell'utente, una per lega
+  const [legheNomi, setLegheNomi] = useState({}); // lega_id -> nome, solo se in più di una lega
+  const [legaSelId, setLegaSelId] = useState(null);
   const [giocatori, setGiocatori] = useState([]);
   const [claimed, setClaimed] = useState([]);
   const [scelta, setScelta] = useState("");
@@ -18,14 +20,25 @@ export default function Profilo() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const carica = async () => {
+  const me = mieMembri.find((m) => m.lega_id === legaSelId) || null;
+
+  const caricaMembri = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     const mail = (user?.email || "").toLowerCase();
-    const { data: mie } = await supabase.from("membri_autorizzati")
-      .select("*").eq("email", mail);
-    const m = (mie || [])[0];
-    if (!m) { setStato("no-membro"); return; }
-    setMe(m);
+    const { data: mie } = await supabase.from("membri_autorizzati").select("*").eq("email", mail);
+    if (!mie || !mie.length) { setStato("no-membro"); return; }
+    setMieMembri(mie);
+    setLegaSelId((attuale) => (mie.some((m) => m.lega_id === attuale) ? attuale : mie[0].lega_id));
+    if (mie.length > 1) {
+      const { data: l } = await supabase.from("leghe").select("id, nome").in("id", mie.map((m) => m.lega_id));
+      const nomi = {};
+      (l || []).forEach((r) => { nomi[r.id] = r.nome; });
+      setLegheNomi(nomi);
+    }
+    setStato("ok");
+  };
+
+  const caricaScheda = async (m) => {
     const [{ data: g }, { data: c }] = await Promise.all([
       supabase.from("giocatori").select("*").eq("lega_id", m.lega_id).order("nome"),
       supabase.from("v_giocatori_claimed").select("*"),
@@ -41,23 +54,24 @@ export default function Profilo() {
     } else {
       setScheda(null);
     }
-    setStato("ok");
   };
 
   useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setStato("no-login"); return; }
-      carica();
+      caricaMembri();
     })();
   }, []);
+
+  useEffect(() => { if (me) caricaScheda(me); }, [me?.lega_id, me?.giocatore_id]);
 
   const claim = async (gid) => {
     setBusy(true); setMsg("");
     const { data, error } = await supabase.rpc("claim_giocatore", { gid, p_lega_id: me.lega_id });
     setBusy(false);
     if (error || data !== "ok") setMsg("⚠ " + (error ? tradErroreDb(error.message) : data));
-    else { setMsg(gid ? "✅ Scheda collegata!" : "Scheda scollegata"); carica(); }
+    else { setMsg(gid ? "✅ Scheda collegata!" : "Scheda scollegata"); caricaMembri(); }
   };
 
   const salva = async () => {
@@ -69,7 +83,7 @@ export default function Profilo() {
     }).eq("id", scheda.id);
     setBusy(false);
     setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Profilo salvato");
-    if (!error) carica();
+    if (!error) caricaScheda(me);
   };
 
   const caricaFoto = async (e) => {
@@ -87,12 +101,13 @@ export default function Profilo() {
     const { error } = await supabase.from("giocatori").update({ foto_url: url }).eq("id", scheda.id);
     setBusy(false);
     setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Foto aggiornata");
-    if (!error) carica();
+    if (!error) caricaScheda(me);
   };
 
   if (stato === "verifica") return <div className="centered">Caricamento profilo…</div>;
   if (stato === "no-login") return <div className="centered"><a className="plink" href="/">Fai login per continuare</a></div>;
   if (stato === "no-membro") return <div className="centered">Il tuo accesso non è ancora approvato. <a className="plink" href="/">← Torna al sito</a></div>;
+  if (!me) return <div className="centered">Caricamento profilo…</div>;
 
   const liberi = giocatori.filter((g) => !claimed.includes(g.id));
 
@@ -104,6 +119,13 @@ export default function Profilo() {
         <h1>Il tuo <em>Profilo</em></h1>
         <span className="season"><a className="plink" href="/?sezione=tu">← Torna alla bacheca</a></span>
       </div>
+      {mieMembri.length > 1 && (
+        <select className="legasel" value={legaSelId ?? ""} onChange={(e) => setLegaSelId(Number(e.target.value))}>
+          {mieMembri.map((m) => (
+            <option key={m.lega_id} value={m.lega_id}>{legheNomi[m.lega_id] || `Lega #${m.lega_id}`}</option>
+          ))}
+        </select>
+      )}
       <p className="season" style={{ marginTop: 8 }}>{me.email} {me.ruolo === "admin" && "· 👑 admin"}</p>
       {msg && <div className="note" style={{ marginTop: 10 }}>{msg}</div>}
 

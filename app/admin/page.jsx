@@ -8,7 +8,8 @@ import AppNav from "../../components/AppNav";
 
 export default function Admin() {
   const [stato, setStato] = useState("verifica"); // verifica | no-login | no-admin | ok
-  const [adminLegaId, setAdminLegaId] = useState(null);
+  const [adminLeghe, setAdminLeghe] = useState([]); // lega_id di cui sono admin
+  const [adminLegaId, setAdminLegaId] = useState(null); // lega selezionata da gestire ora
   const [superAdmin, setSuperAdmin] = useState(false);
   const [utentiPiattaforma, setUtentiPiattaforma] = useState([]);
   const [richieste, setRichieste] = useState([]);
@@ -64,14 +65,15 @@ export default function Admin() {
   const [importBusy, setImportBusy] = useState(false);
 
   const carica = async () => {
+    if (adminLegaId == null) return;
     const [r, m, l, pa, gi, st, pr, prc] = await Promise.all([
-      supabase.from("richieste_accesso").select("*").order("richiesta_il", { ascending: false }),
-      supabase.from("membri_autorizzati").select("*").order("aggiunto_il"),
+      supabase.from("richieste_accesso").select("*").eq("lega_id", adminLegaId).order("richiesta_il", { ascending: false }),
+      supabase.from("membri_autorizzati").select("*").eq("lega_id", adminLegaId).order("aggiunto_il"),
       supabase.from("leghe").select("*").order("id"),
-      supabase.from("partite").select("*").order("data", { ascending: false }),
-      supabase.from("giocatori").select("*").order("nome"),
-      supabase.from("stagioni").select("*").order("inizio", { ascending: false }),
-      supabase.from("premi").select("*").order("assegnato_il", { ascending: false }),
+      supabase.from("partite").select("*").eq("lega_id", adminLegaId).order("data", { ascending: false }),
+      supabase.from("giocatori").select("*").eq("lega_id", adminLegaId).order("nome"),
+      supabase.from("stagioni").select("*").eq("lega_id", adminLegaId).order("inizio", { ascending: false }),
+      supabase.from("premi").select("*").eq("lega_id", adminLegaId).order("assegnato_il", { ascending: false }),
       supabase.from("prestazioni").select("partita_id"),
     ]);
     setRichieste(r.data || []);
@@ -98,16 +100,18 @@ export default function Admin() {
       const mail = (session.user?.email || "").toLowerCase();
       const { data: mie } = await supabase.from("membri_autorizzati")
         .select("ruolo, lega_id").eq("email", mail);
-      const admin = (mie || []).find((m) => m.ruolo === "admin");
-      if (!admin) { setStato("no-admin"); return; }
-      setAdminLegaId(admin.lega_id);
+      const admins = (mie || []).filter((m) => m.ruolo === "admin");
+      if (!admins.length) { setStato("no-admin"); return; }
+      setAdminLeghe(admins.map((a) => a.lega_id));
+      setAdminLegaId(admins[0].lega_id);
       const { data: isSuper } = await supabase.rpc("is_super_admin");
       setSuperAdmin(!!isSuper);
       if (isSuper) caricaPiattaforma();
       setStato("ok");
-      carica();
     })();
   }, []);
+
+  useEffect(() => { if (stato === "ok") carica(); }, [stato, adminLegaId]);
 
   useEffect(() => {
     if (!partitaSelId) { setDatiRighe([]); return; }
@@ -416,6 +420,13 @@ export default function Admin() {
         <h1>Pannello <em>Admin</em></h1>
         <span className="season"><a className="plink" href="/?sezione=tu">← Torna alla bacheca</a></span>
       </div>
+      {adminLeghe.length > 1 && (
+        <select className="legasel" value={adminLegaId ?? ""} onChange={(e) => setAdminLegaId(Number(e.target.value))}>
+          {leghe.filter((l) => adminLeghe.includes(l.id)).map((l) => (
+            <option key={l.id} value={l.id}>Gestisci: {l.nome}</option>
+          ))}
+        </select>
+      )}
       {msg && <div className="note" style={{ marginTop: 12 }}>{msg}</div>}
 
       <h2>Importa partite</h2>
