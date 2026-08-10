@@ -3,7 +3,7 @@ import SelettoreLega from "./SelettoreLega";
 import MenuAccount from "./MenuAccount";
 
 const VOCI = [
-  { key: "lega", label: "Leghe", Icon: IconShield },
+  { key: "lega", label: "Lega", Icon: IconShield },
   { key: "partite", label: "Partite", Icon: IconBall },
   { key: "classifiche", label: "Classifiche", Icon: IconTrophy },
   { key: "giocatori", label: "Giocatori", Icon: IconJersey },

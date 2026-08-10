@@ -9,8 +9,9 @@ import MiniTable from "../components/MiniTable";
 import AppNav from "../components/AppNav";
 import SubTabs from "../components/SubTabs";
 import ContextBar from "../components/ContextBar";
-import { IconEdit, IconLock, IconLogout, IconMedal } from "../components/icons";
+import { IconEdit, IconLock, IconLogout } from "../components/icons";
 import CopyButton from "../components/CopyButton";
+import PannelloGestioneLega from "../components/PannelloGestioneLega";
 
 /* ============================================================
    SCARSI LEAGUE — Next.js + Supabase (dati live)
@@ -861,12 +862,11 @@ export default function Home() {
               { key: "panoramica", label: "Panoramica" },
               { key: "totw", label: "Team of the Week" },
               { key: "hof", label: "Hall of Fame", href: "/hall-of-fame" },
+              ...(ruoloUtente === "admin" ? [{ key: "gestione", label: "⚙ Gestione" }] : []),
             ]} />
 
-            {ruoloUtente === "admin" && (
-              <a className="menu-item" href="/admin" style={{ marginTop: 10 }}>
-                <IconMedal /> Gestisci questa lega<span className="hint">pannello admin</span>
-              </a>
+            {legaSub === "gestione" && ruoloUtente === "admin" && (
+              <PannelloGestioneLega legaId={legaId} />
             )}
 
             {legaSub === "panoramica" && (
