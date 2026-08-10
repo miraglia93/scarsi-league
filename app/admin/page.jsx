@@ -383,8 +383,28 @@ export default function Admin() {
   const confermaElimina = async () => {
     if (!eliminaTarget || eliminaTesto !== "ELIMINA") return;
     setEliminaBusy(true);
-    let error, logNote;
 
+    if (eliminaTarget.tipo === "lega") {
+      const { data, error } = await supabase.rpc("elimina_lega", { p_lega_id: eliminaTarget.id });
+      setEliminaBusy(false);
+      if (error || data !== "ok") {
+        setMsg("⚠ " + (error ? tradErroreDb(error.message) : data));
+        setEliminaTarget(null);
+        return;
+      }
+      const restanti = adminLeghe.filter((id) => id !== eliminaTarget.id);
+      if (restanti.length) {
+        setAdminLeghe(restanti);
+        setAdminLegaId(restanti[0]);
+        setMsg(`✅ Lega "${eliminaTarget.label}" eliminata.`);
+        setEliminaTarget(null);
+      } else {
+        window.location.href = "/";
+      }
+      return;
+    }
+
+    let error, logNote;
     if (eliminaTarget.tipo === "partita") {
       const nPrest = prestazioniConteggio[eliminaTarget.id] || 0;
       ({ error } = await supabase.from("partite").delete().eq("id", eliminaTarget.id));
@@ -401,6 +421,31 @@ export default function Admin() {
     setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Eliminazione completata");
     setEliminaTarget(null);
     carica();
+  };
+
+  const esportaDati = async () => {
+    setMsg("");
+    const partiteIds = partite.map((p) => p.id);
+    const [{ data: pr }, { data: vo }, { data: dm }] = await Promise.all([
+      partiteIds.length ? supabase.from("prestazioni").select("*").in("partita_id", partiteIds) : Promise.resolve({ data: [] }),
+      partiteIds.length ? supabase.from("voti_ricevuti").select("*").in("partita_id", partiteIds) : Promise.resolve({ data: [] }),
+      partiteIds.length ? supabase.from("dati_manuali").select("*").in("partita_id", partiteIds) : Promise.resolve({ data: [] }),
+    ]);
+    const legaCorrente = leghe.find((l) => l.id === adminLegaId);
+    const pacchetto = {
+      esportato_il: new Date().toISOString(),
+      lega: legaCorrente,
+      membri, stagioni, giocatori, partite,
+      prestazioni: pr || [], voti_ricevuti: vo || [], dati_manuali: dm || [],
+      premi: premiList,
+    };
+    const blob = new Blob([JSON.stringify(pacchetto, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${legaCorrente?.slug || "lega"}-dati-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (stato === "verifica") return <div className="centered">Verifica permessi…</div>;
@@ -713,6 +758,16 @@ export default function Admin() {
             <button className="mini ok" style={{ marginTop: 10 }} onClick={creaStagione}
               disabled={!nuovaStagioneLega || !nuovaStagioneNome || !nuovaStagioneInizio}>+ Crea stagione</button>
           </div>
+
+          <h2 style={{ marginTop: 32 }}>I tuoi dati</h2>
+          <p className="season">
+            Puoi scaricare in qualsiasi momento tutti i dati di questa lega, o eliminarla
+            del tutto — cancella anche i dati di membri, partite, voti e premi collegati.
+          </p>
+          <button className="mini" onClick={esportaDati}>⬇ Esporta i dati della lega</button>{" "}
+          <button className="mini no" onClick={() => apriElimina("lega", adminLegaId, leghe.find((l) => l.id === adminLegaId)?.nome || "questa lega")}>
+            Elimina questa lega
+          </button>
         </>
       )}
 
@@ -816,6 +871,12 @@ export default function Admin() {
                 Stai per eliminare la partita <b>{eliminaTarget.label}</b>. Verranno eliminate a
                 cascata anche <b>{prestazioniConteggio[eliminaTarget.id] || 0} prestazioni</b>, i
                 voti individuali e i dati manuali collegati. L&apos;operazione non è reversibile.
+              </p>
+            ) : eliminaTarget.tipo === "lega" ? (
+              <p>
+                Stai per eliminare <b>tutta la lega {eliminaTarget.label}</b>: giocatori, membri,
+                partite, voti, premi e stagioni collegati. Se vuoi tenerne una copia, esporta i
+                dati prima di confermare. L&apos;operazione non è reversibile.
               </p>
             ) : (
               <p>
