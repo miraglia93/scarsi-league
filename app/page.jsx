@@ -755,20 +755,20 @@ export default function Home() {
                 ruoloUtente={ruoloUtente} mostraMenu xp={xpDiGiocatore(mioGiocatoreId)} />
             </>
           ) : sezione !== "tu" || mioGiocatoreId != null ? (
-            stagioneSel !== "all" && stagioneSel === stagioneAttiva?.id ? (
-              <p className="centered">{`La stagione ${stagioneAttiva.nome} inizia a breve ⚽`}</p>
-            ) : ruoloUtente === "admin" ? (
+            ruoloUtente === "admin" || ruoloUtente === "coorganizzatore" ? (
               <div className="wrap" style={{ maxWidth: 480, paddingLeft: 0, paddingRight: 0 }}>
-                <p className="season">Sei admin qui — un paio di cose per partire</p>
+                <p className="season">Sei {ruoloUtente === "admin" ? "admin" : "coorganizzatore"} qui — un paio di cose per partire</p>
                 <p className="msg">
                   <b>Invita i tuoi amici</b> con questo link, li porta dritti alla richiesta di accesso:
                 </p>
                 <p className="msg"><code>{linkInvito}</code></p>
                 <CopyButton text={linkInvito} label="📋 Copia link di invito" />
                 <p className="msg" style={{ marginTop: 18 }}>
-                  Quando hai i dati Fubles della prima partita, <a className="plink" href="/admin">importali dal pannello admin</a>.
+                  Quando hai i dati Fubles della prima partita, <a className="plink" href="/admin">importali dal pannello di gestione</a>.
                 </p>
               </div>
+            ) : stagioneSel !== "all" && stagioneSel === stagioneAttiva?.id ? (
+              <p className="centered">{`La stagione ${stagioneAttiva.nome} inizia a breve ⚽`}</p>
             ) : (
               <p className="centered">Questa lega non ha ancora partite importate ⚽</p>
             )
