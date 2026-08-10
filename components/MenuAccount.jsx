@@ -26,7 +26,7 @@ export default function MenuAccount({ iniziali, notificaDot }) {
       </button>
       {aperto && (
         <div className="sl-panel ma-panel">
-          <a className="sl-riga" href="/?sezione=tu">La tua bacheca</a>
+          <a className="sl-riga" href="/bacheca">La tua bacheca</a>
           <a className="sl-riga" href="/profilo">Modifica profilo</a>
           <a className="sl-riga" href="/privacy">Privacy</a>
           <button type="button" className="sl-riga" style={{ color: "#E88" }} onClick={() => supabase.auth.signOut()}>Esci</button>
