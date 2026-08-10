@@ -170,6 +170,12 @@ export default function Admin() {
     carica();
   };
 
+  const togglePubblica = async (legaId, valore) => {
+    const { error } = await supabase.from("leghe").update({ pubblica: valore }).eq("id", legaId);
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : (valore ? "✅ Lega visibile in /leghe" : "✅ Lega tornata privata"));
+    carica();
+  };
+
   // ---------- import manuale Fubles ----------
   const analizzaImport = () => {
     setImportMsg("");
@@ -675,14 +681,24 @@ export default function Admin() {
       {sezioneAdmin === "struttura" && (
         <>
           <h2>Leghe ({leghe.length})</h2>
+          <p className="season">Una lega pubblica compare in /leghe: chiunque può trovarla e chiedere di entrare, senza bisogno di un invito diretto.</p>
           <div style={{ overflowX: "auto" }}>
             <table>
-              <thead><tr><th>#</th><th>Nome</th><th>Slug</th><th>Struttura</th></tr></thead>
+              <thead><tr><th>#</th><th>Nome</th><th>Slug</th><th>Struttura</th><th>Pubblica</th></tr></thead>
               <tbody>
                 {leghe.map((l) => (
                   <tr key={l.id}>
                     <td className="rank">{l.id}</td><td className="pname">{l.nome}</td>
                     <td>{l.slug}</td><td>{l.struttura || "—"}</td>
+                    <td>
+                      {adminLeghe.includes(l.id) ? (
+                        <button className={`mini ${l.pubblica ? "ok" : ""}`} onClick={() => togglePubblica(l.id, !l.pubblica)}>
+                          {l.pubblica ? "🌐 Pubblica" : "🔒 Privata"}
+                        </button>
+                      ) : (
+                        <span>{l.pubblica ? "🌐 Pubblica" : "🔒 Privata"}</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

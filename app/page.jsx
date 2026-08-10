@@ -184,7 +184,7 @@ function DettaglioGiocatore({ s, players, S, VOTES, rel, PREMI, ruoloUtente, mos
           <div className="menulist">
             <a className="menu-item" href="/profilo"><IconEdit /> Modifica profilo</a>
             <a className="menu-item" href="/privacy"><IconLock /> Privacy</a>
-            <a className="menu-item" href="/crea-lega"><IconShield /> Crea una lega</a>
+            <a className="menu-item" href="/leghe"><IconShield /> Altre leghe</a>
             {ruoloUtente === "admin" && <a className="menu-item" href="/admin"><IconMedal /> Admin<span className="hint">solo admin</span></a>}
             <button type="button" className="menu-item danger" onClick={() => supabase.auth.signOut()}><IconLogout /> Esci</button>
           </div>
@@ -373,6 +373,9 @@ function Login() {
       </button>
 
       <p className="msg">Continuando accetti la <a className="plink" href="/privacy">Privacy Policy</a> della lega.</p>
+      <p className="msg" style={{ fontSize: 13, opacity: .7 }}>
+        Non hai ancora un invito? <a className="plink" href="/leghe">Scopri le leghe</a>.
+      </p>
     </div>
   );
 }
