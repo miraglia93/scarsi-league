@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { tradErroreDb } from "../../lib/engine";
 import AppNav from "../../components/AppNav";
 import CopyButton from "../../components/CopyButton";
+import CodiceQR from "../../components/CodiceQR";
 
 export default function CreaLega() {
   const [stato, setStato] = useState("verifica"); // verifica | no-login | ok
@@ -71,7 +72,15 @@ export default function CreaLega() {
             <div className="betaform">
               <p className="msg"><b>1. Invita i tuoi amici</b> — mandagli questo link, li porta dritti alla richiesta di accesso:</p>
               <p className="msg"><code>{linkInvito}</code></p>
-              <CopyButton text={linkInvito} label="📋 Copia link di invito" />
+              <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <CopyButton text={linkInvito} label="📋 Copia link di invito" />
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <CodiceQR testo={linkInvito} dimensione={160} />
+                <p className="msg" style={{ fontSize: 12, opacity: .7, marginTop: 6 }}>
+                  Stampalo o mostralo al campo — chi lo inquadra atterra dritto sulla richiesta di accesso.
+                </p>
+              </div>
               <p className="msg" style={{ marginTop: 18 }}><b>2. Approva le richieste</b> man mano che arrivano, dal pannello admin.</p>
               <p className="msg"><b>3. Importa la prima partita</b> quando hai i dati Fubles, sempre dal pannello admin.</p>
               <a className="plink" href="/admin" style={{ display: "inline-block", marginTop: 10 }}>Vai al pannello admin →</a>
