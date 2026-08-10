@@ -108,12 +108,12 @@ test("buildTOTW: con soli 4 giocatori la 1-3-3-1 va adattata", () => {
 test("cardStats: solo dati reali, nessun attributo inventato (velocità, tiro...)", () => {
   const stats = cardStats(S[1]); // Mario
   const chiavi = stats.map(([k]) => k);
-  assertEqual(chiavi, ["PRES", "GOL", "MEDIA", "MVP", "WIN%", "PUNTI"]);
+  assertEqual(chiavi, ["PRES", "GOL", "VOTO", "MVP", "WIN%", "PT"]);
   const valori = Object.fromEntries(stats);
   assertEqual(valori.PRES, 2);
   assertEqual(valori.GOL, 3);
   assertEqual(valori.MVP, 1);
-  assertEqual(valori.PUNTI, 4);
+  assertEqual(valori.PT, 4);
 });
 
 test("tradErroreDb: messaggi Postgres noti tradotti in italiano", () => {

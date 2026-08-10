@@ -74,10 +74,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
   background:radial-gradient(circle at 50% 35%,rgba(232,237,230,.14),transparent 70%);border-radius:8px;padding:12px 0;}
 .fut-name{font-family:'Anton';text-align:center;font-size:15px;letter-spacing:.06em;text-transform:uppercase;
   border-top:1px solid rgba(232,237,230,.18);padding-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fut-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;margin-top:10px;}
-.fut-stats div{display:flex;gap:5px;align-items:baseline;justify-content:center;font-size:12px;}
+.fut-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 4px;margin-top:10px;}
+.fut-stats div{display:flex;gap:3px;align-items:baseline;justify-content:center;font-size:12px;min-width:0;}
 .fut-stats b{font-size:15px;font-variant-numeric:tabular-nums;}
-.fut-stats span{color:#9DA88F;font-size:10px;letter-spacing:.08em;}
+.fut-stats span{color:#9DA88F;font-size:9px;letter-spacing:.04em;white-space:nowrap;}
 .fut.sm{padding:10px;}
 .detail{display:grid;grid-template-columns:230px 1fr;gap:26px;align-items:start;}
 @media(max-width:640px){.detail{grid-template-columns:1fr;}.hero{padding:34px 12px 16px;}}
