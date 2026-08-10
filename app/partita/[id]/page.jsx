@@ -6,6 +6,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { fmtData, iniziali, tradErroreDb } from "../../../lib/engine";
 import AppNav from "../../../components/AppNav";
 import CopyButton from "../../../components/CopyButton";
+import RecapImageButton from "../../../components/RecapImageButton";
 
 function RigaFormazione({ p }) {
   return (
@@ -166,6 +167,8 @@ export default function Partita() {
 
   const mvp = righe.find((r) => r.motm);
   const migliorVoto = [...righe].filter((r) => r.voto != null).sort((a, b) => b.voto - a.voto)[0];
+  const peggiorVoto = [...righe].filter((r) => r.voto != null).sort((a, b) => a.voto - b.voto)[0];
+  const capocannoniereMatch = [...righe].filter((r) => r.gol > 0).sort((a, b) => b.gol - a.gol)[0];
 
   const mediaSquadra = (nome) => {
     const voti = righe.filter((r) => r.squadra === nome && r.voto != null).map((r) => r.voto);
@@ -199,6 +202,18 @@ export default function Partita() {
 
       <div className="reportbar">
         <ReportButton testo={reportText} />
+        <RecapImageButton
+          nomeFile={`scarsi-league-${partita.data}.png`}
+          dati={{
+            legaNome: "Scarsi League",
+            dataTesto: fmtData(partita.data, { year: true }),
+            squadra1: squadre[0], squadra2: squadre[1], gol1: gol[0], gol2: gol[1],
+            mvp: mvp ? { nome: mvp.nickname || mvp.nome, voto: mvp.voto } : null,
+            scarso: peggiorVoto && peggiorVoto.giocatore_id !== mvp?.giocatore_id
+              ? { nome: peggiorVoto.nickname || peggiorVoto.nome, voto: peggiorVoto.voto } : null,
+            marcatore: capocannoniereMatch ? { nome: capocannoniereMatch.nickname || capocannoniereMatch.nome, gol: capocannoniereMatch.gol } : null,
+          }}
+        />
         {partita.fubles_url && (
           <a className="plink" href={partita.fubles_url} target="_blank" rel="noreferrer">Vedi su Fubles ↗</a>
         )}
