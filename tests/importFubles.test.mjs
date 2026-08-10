@@ -1,7 +1,7 @@
 import { test, assert, assertEqual, riepilogo } from "./_assert.mjs";
 import {
   parseImportFubles, calcolaAnteprimaImport, partiteDaInserire,
-  trovaGiocatoriNuovi, costruisciPrestazioni, costruisciVoti,
+  trovaGiocatoriNuovi, costruisciPrestazioni, costruisciVoti, parseImportRapido,
 } from "../lib/importFubles.js";
 
 console.log("importFubles.js");
@@ -141,6 +141,73 @@ test("costruisciPrestazioni: scarta le righe di un match che non è stato inseri
   const nuoveMatchIds = new Set(); // nessun match nuovo, come se fosse già tutto presente
   const prestazioni = costruisciPrestazioni(r, nuoveMatchIds, {}, {});
   assertEqual(prestazioni.length, 0);
+});
+
+/* ---------- import rapido (bookmarklet, senza id Fubles) ---------- */
+
+const datiRapido = {
+  match_id: "3149177",
+  fubles_url: "https://app.fubles.com/it/app/matches/3149177",
+  data: "2026-07-13",
+  ora: "21:00",
+  disciplina: "Calcio a 8",
+  coperto_scoperto: "Coperto",
+  struttura: "Centro Sportivo Bettinelli",
+  indirizzo: "Via Lago Di nemi, 31 20142 Milano",
+  pubblica_privata: "Pubblica",
+  squadra_1: "Bianchi",
+  squadra_2: "Neri",
+  gol_squadra_1: 5,
+  gol_squadra_2: 7,
+  giocatori: [
+    {
+      nome: "Fabio Parlato", ruolo: "Difensore", squadra: "Bianchi", voto: 6.7, gol: 0, mvp: true,
+      voti_ricevuti: [{ votante: "Mauro Merlotti", voto: 7 }, { votante: "Nome Sconosciuto", voto: 5 }],
+    },
+    { nome: "Mauro Merlotti", ruolo: "Portiere", squadra: "Neri", voto: 6.63, gol: 0, mvp: false, voti_ricevuti: [] },
+  ],
+};
+
+test("parseImportRapido: nessun errore su dati validi", () => {
+  const r2 = parseImportRapido(datiRapido, { legaId: 1, partiteEsistenti: [], giocatoriEsistenti: [] });
+  assertEqual(r2.errori, []);
+  assertEqual(r2.partita.match_id, "3149177");
+  assertEqual(r2.partita.gol_squadra_1, 5);
+  assertEqual(r2.partita.lega_id, 1);
+});
+
+test("parseImportRapido: blocca se il match_id è già stato importato in questa lega", () => {
+  const r2 = parseImportRapido(datiRapido, { legaId: 1, partiteEsistenti: [{ match_id: "3149177" }], giocatoriEsistenti: [] });
+  assert(r2.errori.length > 0, "deve segnalare un errore");
+  assertEqual(r2.partita, null);
+});
+
+test("parseImportRapido: identifica i giocatori per nome, non per id Fubles", () => {
+  const r2 = parseImportRapido(datiRapido, {
+    legaId: 1, partiteEsistenti: [],
+    giocatoriEsistenti: [{ id: 42, nome: "Fabio Parlato" }], // già in lega -> non è "nuovo"
+  });
+  assertEqual(r2.giocatoriNuovi.length, 1);
+  assertEqual(r2.giocatoriNuovi[0].nome, "Mauro Merlotti");
+  assertEqual(r2.giocatoriNuovi[0].ruolo_prevalente, "POR");
+});
+
+test("parseImportRapido: calcola esito, gol_squadra e gol_subiti dalla squadra e dal punteggio", () => {
+  const r2 = parseImportRapido(datiRapido, { legaId: 1, partiteEsistenti: [], giocatoriEsistenti: [] });
+  const parlato = r2.prestazioni.find((p) => p.nome === "Fabio Parlato");
+  assertEqual(parlato.esito, "Sconfitta"); // Bianchi 5 - Neri 7
+  assertEqual(parlato.gol_squadra, 5);
+  assertEqual(parlato.gol_subiti, 7);
+  assertEqual(parlato.motm, true);
+  const merlotti = r2.prestazioni.find((p) => p.nome === "Mauro Merlotti");
+  assertEqual(merlotti.esito, "Vittoria");
+});
+
+test("parseImportRapido: scarta un voto il cui votante non ha giocato la partita", () => {
+  const r2 = parseImportRapido(datiRapido, { legaId: 1, partiteEsistenti: [], giocatoriEsistenti: [] });
+  assertEqual(r2.voti.length, 1);
+  assertEqual(r2.voti[0].votante_nome, "Mauro Merlotti");
+  assert(r2.avvisi.some((a) => a.includes("1 voto")), "deve avvisare del voto scartato");
 });
 
 export const ok = riepilogo("importFubles.test.mjs");

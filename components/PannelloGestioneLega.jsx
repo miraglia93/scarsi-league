@@ -5,8 +5,9 @@ import { supabase } from "../lib/supabaseClient";
 import { tradErroreDb } from "../lib/engine";
 import {
   parseImportFubles, calcolaAnteprimaImport, partiteDaInserire as calcolaPartiteDaInserire,
-  trovaGiocatoriNuovi, costruisciPrestazioni, costruisciVoti,
+  trovaGiocatoriNuovi, costruisciPrestazioni, costruisciVoti, parseImportRapido,
 } from "../lib/importFubles";
+import { bookmarkletHref } from "../lib/bookmarklet";
 import SubTabs from "./SubTabs";
 
 // tutta la gestione di UNA lega (import, accessi, stagioni, premi):
@@ -69,6 +70,12 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const [importPreview, setImportPreview] = useState(null);
   const [importMsg, setImportMsg] = useState("");
   const [importBusy, setImportBusy] = useState(false);
+
+  // ---------- import rapido (bookmarklet, una partita alla volta) ----------
+  const [importRapidoText, setImportRapidoText] = useState("");
+  const [importRapidoPreview, setImportRapidoPreview] = useState(null);
+  const [importRapidoMsg, setImportRapidoMsg] = useState("");
+  const [importRapidoBusy, setImportRapidoBusy] = useState(false);
 
   const carica = async () => {
     if (legaId == null) return;
@@ -228,6 +235,83 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
       setImportMsg("⚠ " + tradErroreDb(error.message));
     }
     setImportBusy(false);
+  };
+
+  // ---------- import rapido (bookmarklet, senza id Fubles) ----------
+  const analizzaImportRapido = () => {
+    setImportRapidoMsg("");
+    let dati;
+    try {
+      dati = JSON.parse(importRapidoText);
+    } catch {
+      setImportRapidoPreview(null);
+      setImportRapidoMsg("⚠ Il testo incollato non è JSON valido — assicurati di aver incollato esattamente quello che il bottone ha copiato.");
+      return;
+    }
+    const risultato = parseImportRapido(dati, { legaId, partiteEsistenti: partite, giocatoriEsistenti: giocatori });
+    if (risultato.errori.length) {
+      setImportRapidoPreview(null);
+      setImportRapidoMsg("⚠ " + risultato.errori.join(" · "));
+      return;
+    }
+    setImportRapidoPreview(risultato);
+  };
+
+  const confermaImportRapido = async () => {
+    if (!importRapidoPreview) return;
+    setImportRapidoBusy(true); setImportRapidoMsg("");
+    const { partita, giocatoriNuovi, prestazioni, voti } = importRapidoPreview;
+    try {
+      const { data: partitaInserita, error: errP } = await supabase.from("partite").insert(partita).select("id").single();
+      if (errP) throw errP;
+      const partitaId = partitaInserita.id;
+
+      const nomeAId = {};
+      giocatori.forEach((g) => { nomeAId[g.nome.trim().toLowerCase()] = g.id; });
+      if (giocatoriNuovi.length) {
+        const { data: creati, error: errG } = await supabase.from("giocatori").insert(
+          giocatoriNuovi.map((g) => ({ nome: g.nome, lega_id: legaId, ruolo_prevalente: g.ruolo_prevalente })),
+        ).select("id, nome");
+        if (errG) throw errG;
+        (creati || []).forEach((g) => { nomeAId[g.nome.trim().toLowerCase()] = g.id; });
+      }
+
+      const prestazioniRighe = prestazioni
+        .map((p) => ({
+          partita_id: partitaId, giocatore_id: nomeAId[p.nome.trim().toLowerCase()],
+          squadra: p.squadra, ruolo: p.ruolo, voto: p.voto, gol: p.gol, motm: p.motm,
+          esito: p.esito, gol_squadra: p.gol_squadra, gol_subiti: p.gol_subiti,
+        }))
+        .filter((p) => p.giocatore_id);
+      if (prestazioniRighe.length) {
+        const { error: errPr } = await supabase.from("prestazioni").upsert(prestazioniRighe, { onConflict: "partita_id,giocatore_id" });
+        if (errPr) throw errPr;
+      }
+
+      const votiRighe = voti
+        .map((v) => ({
+          partita_id: partitaId, valutato_id: nomeAId[v.valutato_nome.trim().toLowerCase()],
+          votante_id: nomeAId[v.votante_nome.trim().toLowerCase()], voto: v.voto,
+        }))
+        .filter((v) => v.valutato_id && v.votante_id);
+      if (votiRighe.length) {
+        const { error: errV } = await supabase.from("voti_ricevuti").insert(votiRighe);
+        if (errV) throw errV;
+      }
+
+      await supabase.from("import_log").insert({
+        fonte: "admin-ui-import-rapido",
+        errori: `Import rapido (bookmarklet): 1 partita, ${giocatoriNuovi.length} giocatori nuovi, ${prestazioniRighe.length} prestazioni, ${votiRighe.length} voti.`,
+      });
+
+      setImportRapidoMsg(`✅ Importata: ${giocatoriNuovi.length} giocatori nuovi, ${prestazioniRighe.length} prestazioni, ${votiRighe.length} voti.`);
+      setImportRapidoPreview(null);
+      setImportRapidoText("");
+      carica();
+    } catch (error) {
+      setImportRapidoMsg("⚠ " + tradErroreDb(error.message));
+    }
+    setImportRapidoBusy(false);
   };
 
   const aggiornaRiga = (giocatoreId, campo, valore) => {
@@ -432,7 +516,44 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
 
       {sezioneAdmin === "partite" && (
         <>
-          <h2>Importa partite</h2>
+          <h2>Importa da Fubles (link) — più veloce</h2>
+          <p className="season">
+            Trascina questo link nella barra dei preferiti del browser. Poi, sulla pagina di
+            una partita Fubles già disputata (con le pagelle visibili), cliccalo: copia tutto
+            in automatico, incolla qui sotto e conferma. Legge solo quello che è già a schermo,
+            un giocatore alla volta — nessuna richiesta in più verso Fubles.
+          </p>
+          <p>
+            <a className="mini" href={bookmarkletHref()} onClick={(e) => e.preventDefault()}
+              draggable="true">📥 Importa da Fubles</a>
+            <span className="season" style={{ marginLeft: 8 }}>← trascina questo nei preferiti</span>
+          </p>
+          <div className="betaform">
+            <label className="flabel">Incolla qui il testo copiato dal bottone</label>
+            <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+              value={importRapidoText} onChange={(e) => { setImportRapidoText(e.target.value); setImportRapidoPreview(null); }} />
+            <button className="mini" style={{ marginTop: 10 }} onClick={analizzaImportRapido} disabled={!importRapidoText}>Analizza</button>
+            {importRapidoMsg && <div className="note">{importRapidoMsg}</div>}
+            {importRapidoPreview && (
+              <>
+                <div className="note">
+                  {importRapidoPreview.partita.squadra_1} {importRapidoPreview.partita.gol_squadra_1}-{importRapidoPreview.partita.gol_squadra_2} {importRapidoPreview.partita.squadra_2}
+                  {" · "}{importRapidoPreview.partita.data}
+                  {" · "}{importRapidoPreview.giocatoriNuovi.length} giocatori nuovi (per nome — verifica che non siano già in lista con un nome scritto diverso)
+                  {" · "}{importRapidoPreview.prestazioni.length} prestazioni
+                  {" · "}{importRapidoPreview.voti.length} voti
+                </div>
+                {importRapidoPreview.avvisi.map((a, i) => (
+                  <div key={i} className="note">⚠ {a}</div>
+                ))}
+                <button className="mini ok" onClick={confermaImportRapido} disabled={importRapidoBusy}>
+                  {importRapidoBusy ? "Importazione…" : "✓ Conferma import"}
+                </button>
+              </>
+            )}
+          </div>
+
+          <h2 style={{ marginTop: 32 }}>Importa manualmente (Excel)</h2>
           <p className="season">
             Incolla il testo copiato dai fogli dell&apos;estrazione Fubles (seleziona le celle,
             incluse le intestazioni, e copia/incolla qui). VOTI_RICEVUTI è opzionale.
