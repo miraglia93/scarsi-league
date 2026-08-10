@@ -1,5 +1,6 @@
 import { IconShield, IconBall, IconTrophy, IconJersey, IconPlayer } from "./icons";
 import SelettoreLega from "./SelettoreLega";
+import MenuAccount from "./MenuAccount";
 
 const VOCI = [
   { key: "lega", label: "Leghe", Icon: IconShield },
@@ -31,11 +32,7 @@ export default function AppNav({ active, onNavigate, iniziali, notifiche = {}, l
           </a>
         ))}
         <span className="tb-spacer" />
-        <a className={`tb-avatar${active === "tu" ? " on" : ""}`} href={href("tu")} onClick={click("tu")}
-          title="Tu" aria-label="Tu">
-          <span className="tb-hex">{iniziali || <IconPlayer size={16} />}</span>
-          {notifiche.tu && <span className="notifica-dot notifica-dot-avatar" />}
-        </a>
+        <MenuAccount iniziali={iniziali} notificaDot={notifiche.tu} />
       </nav>
 
       <nav className="bottombar">

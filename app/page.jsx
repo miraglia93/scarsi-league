@@ -9,7 +9,7 @@ import MiniTable from "../components/MiniTable";
 import AppNav from "../components/AppNav";
 import SubTabs from "../components/SubTabs";
 import ContextBar from "../components/ContextBar";
-import { IconEdit, IconLock, IconLogout, IconMedal, IconShield } from "../components/icons";
+import { IconEdit, IconLock, IconLogout, IconMedal } from "../components/icons";
 import CopyButton from "../components/CopyButton";
 
 /* ============================================================
@@ -184,8 +184,6 @@ function DettaglioGiocatore({ s, players, S, VOTES, rel, PREMI, ruoloUtente, mos
           <div className="menulist">
             <a className="menu-item" href="/profilo"><IconEdit /> Modifica profilo</a>
             <a className="menu-item" href="/privacy"><IconLock /> Privacy</a>
-            <a className="menu-item" href="/leghe"><IconShield /> Altre leghe</a>
-            {ruoloUtente === "admin" && <a className="menu-item" href="/admin"><IconMedal /> Admin<span className="hint">solo admin</span></a>}
             <button type="button" className="menu-item danger" onClick={() => supabase.auth.signOut()}><IconLogout /> Esci</button>
           </div>
         )}
@@ -864,6 +862,12 @@ export default function Home() {
               { key: "totw", label: "Team of the Week" },
               { key: "hof", label: "Hall of Fame", href: "/hall-of-fame" },
             ]} />
+
+            {ruoloUtente === "admin" && (
+              <a className="menu-item" href="/admin" style={{ marginTop: 10 }}>
+                <IconMedal /> Gestisci questa lega<span className="hint">pannello admin</span>
+              </a>
+            )}
 
             {legaSub === "panoramica" && (
               <>

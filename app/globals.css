@@ -320,6 +320,12 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 .sl-codicebox .sl-input{margin-bottom:0;}
 .sl-vai{background:#E3C567;color:#0B1210;border:none;border-radius:6px;padding:0 14px;
   font-size:12px;font-weight:800;font-family:'Archivo';cursor:pointer;white-space:nowrap;}
+.sl-crealega{display:block;text-align:center;background:none;border:1px dashed rgba(227,197,103,.4);
+  color:#E3C567;border-radius:6px;padding:9px;font-size:12px;font-weight:800;font-family:'Archivo';
+  text-decoration:none;cursor:pointer;margin-top:4px;}
+.sl-crealega:hover{border-style:solid;}
+.ma-wrap{position:relative;}
+.ma-panel{left:auto;right:0;width:200px;}
 .topbar a{position:relative;display:flex;align-items:center;gap:8px;padding:0 15px;height:64px;
   color:#7E8B83;font-weight:700;font-size:13px;text-decoration:none;letter-spacing:.02em;
   transition:color .18s;}

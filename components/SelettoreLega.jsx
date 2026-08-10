@@ -85,6 +85,8 @@ export default function SelettoreLega({ legaAttuale, onLegaChange }) {
               onChange={(e) => setCodice(e.target.value)} onKeyDown={(e) => e.key === "Enter" && vaiConCodice()} />
             <button type="button" className="sl-vai" onClick={vaiConCodice}>Vai</button>
           </div>
+
+          <a className="sl-crealega" href="/crea-lega" style={{ marginTop: 14 }}>+ Crea una lega</a>
         </div>
       )}
     </div>
