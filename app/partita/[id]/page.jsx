@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
-import { fmtData, iniziali, tradErroreDb } from "../../../lib/engine";
+import { fmtData, iniziali, tradErroreDb, applicaNomiRegistrati } from "../../../lib/engine";
 import AppNav from "../../../components/AppNav";
 import CopyButton from "../../../components/CopyButton";
 import RecapImageButton from "../../../components/RecapImageButton";
@@ -82,6 +82,10 @@ export default function Partita() {
       if (!p) { setStato("non-trovata"); return; }
       setPartita(p);
 
+      const { data: nomiReg } = await supabase.rpc("nomi_registrati", { p_lega_id: p.lega_id });
+      const mappaNomi = {};
+      (nomiReg || []).forEach((r) => { mappaNomi[r.giocatore_id] = r.nome_completo; });
+
       const { data: pr, error: prErr } = await supabase.from("prestazioni").select("*").eq("partita_id", id);
       if (prErr) { setErrore(tradErroreDb(prErr.message)); setStato("errore"); return; }
 
@@ -97,7 +101,7 @@ export default function Partita() {
       if (ids.length) {
         const { data: gi, error: giErr } = await supabase.from("giocatori").select("*").in("id", ids);
         if (giErr) { setErrore(tradErroreDb(giErr.message)); setStato("errore"); return; }
-        (gi || []).forEach((g) => { giocMap[g.id] = g; });
+        applicaNomiRegistrati(gi || [], mappaNomi).forEach((g) => { giocMap[g.id] = g; });
       }
 
       setRighe((pr || []).map((r) => {
@@ -137,7 +141,7 @@ export default function Partita() {
           .sort((a, b) => b.punti - a.punti || b.media - a.media)[0];
         if (top) {
           const { data: gTop } = await supabase.from("giocatori").select("nome, nickname").eq("id", top.gid).maybeSingle();
-          if (gTop) setLeader({ nome: gTop.nickname || gTop.nome, punti: top.punti });
+          if (gTop) setLeader({ nome: gTop.nickname || mappaNomi[top.gid] || gTop.nome, punti: top.punti });
         }
       }
 

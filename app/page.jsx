@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth, distribuzioneVoti, computeAndamento, computeXP, computeLivello, tradErroreDb } from "../lib/engine";
+import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth, distribuzioneVoti, computeAndamento, computeXP, computeLivello, tradErroreDb, applicaNomiRegistrati } from "../lib/engine";
 import PlayerCard from "../components/PlayerCard";
 import FormaDots from "../components/FormaDots";
 import MiniTable from "../components/MiniTable";
@@ -644,6 +644,19 @@ export default function Home() {
   const ruoloUtente = mioMembro?.ruolo || "membro";
   const mioGiocatoreId = mioMembro?.giocatore_id ?? null;
 
+  // nomi di registrazione (nome+cognome dell'account) per chi ha rivendicato
+  // una scheda in questa lega: sostituiscono il nome Fubles nelle carte,
+  // classifiche, TOTW ecc. (il nickname resta comunque la priorità più alta)
+  const [nomiRegistrati, setNomiRegistrati] = useState({});
+  useEffect(() => {
+    if (legaId == null) { setNomiRegistrati({}); return; }
+    supabase.rpc("nomi_registrati", { p_lega_id: legaId }).then(({ data: righe }) => {
+      const m = {};
+      (righe || []).forEach((r) => { m[r.giocatore_id] = r.nome_completo; });
+      setNomiRegistrati(m);
+    });
+  }, [legaId]);
+
   // richieste in attesa (per admin e coorganizzatori, per il pallino su "Tu")
   useEffect(() => {
     if (!legaId || (ruoloUtente !== "admin" && ruoloUtente !== "coorganizzatore")) { setRichiesteInAttesa(0); return; }
@@ -699,9 +712,13 @@ export default function Home() {
 
   const notifiche = { partite: notificaPartite, tu: ((ruoloUtente === "admin" || ruoloUtente === "coorganizzatore") && richiesteInAttesa > 0) || notificaPremio };
 
+  const giocatoriLega = useMemo(() => {
+    if (!raw || legaId == null) return [];
+    return applicaNomiRegistrati(raw.gi.filter((g) => g.lega_id === legaId), nomiRegistrati);
+  }, [raw, legaId, nomiRegistrati]);
+
   const data = useMemo(() => {
     if (!raw || legaId == null) return null;
-    const gi = raw.gi.filter((g) => g.lega_id === legaId);
     const pa = raw.pa.filter((p) => p.lega_id === legaId && (stagioneSel === "all" || p.stagione_id === stagioneSel));
     const paIds = new Set(pa.map((p) => p.id));
     const pr = raw.pr.filter((p) => paIds.has(p.partita_id));
@@ -709,22 +726,21 @@ export default function Home() {
     const dm = raw.dm.filter((d) => paIds.has(d.partita_id));
     const premi = raw.premi.filter((p) => p.lega_id === legaId);
     if (!pa.length) return { P: {}, matches: [], votes: [], dm: [], premi: [], vuota: true };
-    return { ...assemble(pa, gi, pr, vo), dm, premi };
-  }, [raw, legaId, stagioneSel]);
+    return { ...assemble(pa, giocatoriLega, pr, vo), dm, premi };
+  }, [raw, legaId, stagioneSel, giocatoriLega]);
   const S = useMemo(() => (data && !data.vuota ? buildStats(data.P, data.matches) : null), [data]);
   const rel = useMemo(() => (data ? pairAndNemesis(data.matches) : null), [data]);
 
   // XP: sempre all-time, mai filtrato per stagione (è la progressione del giocatore).
   const dataAllTime = useMemo(() => {
     if (!raw || legaId == null) return null;
-    const gi = raw.gi.filter((g) => g.lega_id === legaId);
     const pa = raw.pa.filter((p) => p.lega_id === legaId);
     if (!pa.length) return null;
     const paIds = new Set(pa.map((p) => p.id));
     const pr = raw.pr.filter((p) => paIds.has(p.partita_id));
     const vo = raw.vo.filter((v) => paIds.has(v.partita_id));
-    return assemble(pa, gi, pr, vo);
-  }, [raw, legaId]);
+    return assemble(pa, giocatoriLega, pr, vo);
+  }, [raw, legaId, giocatoriLega]);
   const SAllTime = useMemo(() => (dataAllTime ? buildStats(dataAllTime.P, dataAllTime.matches) : null), [dataAllTime]);
   const dmAllTimeByChiave = useMemo(() => {
     const m = {};

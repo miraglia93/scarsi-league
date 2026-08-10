@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { assemble, buildStats, tradErroreDb } from "../../lib/engine";
+import { assemble, buildStats, tradErroreDb, applicaNomiRegistrati } from "../../lib/engine";
 import AppNav from "../../components/AppNav";
 import SubTabs from "../../components/SubTabs";
 
@@ -13,6 +13,16 @@ export default function HallOfFame() {
   const [legaId, setLegaId] = useState(null);
   const [raw, setRaw] = useState(null);
   const [errore, setErrore] = useState("");
+  const [nomiRegistrati, setNomiRegistrati] = useState({});
+
+  useEffect(() => {
+    if (legaId == null) { setNomiRegistrati({}); return; }
+    supabase.rpc("nomi_registrati", { p_lega_id: legaId }).then(({ data: righe }) => {
+      const m = {};
+      (righe || []).forEach((r) => { m[r.giocatore_id] = r.nome_completo; });
+      setNomiRegistrati(m);
+    });
+  }, [legaId]);
 
   useEffect(() => {
     (async () => {
@@ -59,7 +69,7 @@ export default function HallOfFame() {
   const stagioniConcluse = raw.st
     .filter((s) => s.lega_id === legaId && !s.attiva)
     .sort((a, b) => (a.inizio < b.inizio ? 1 : -1));
-  const giocLega = raw.gi.filter((g) => g.lega_id === legaId);
+  const giocLega = applicaNomiRegistrati(raw.gi.filter((g) => g.lega_id === legaId), nomiRegistrati);
 
   const cards = stagioniConcluse.map((s) => {
     const paStagione = raw.pa.filter((p) => p.lega_id === legaId && p.stagione_id === s.id);

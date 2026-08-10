@@ -1,6 +1,7 @@
 import { test, assert, assertEqual, assertVicino, riepilogo } from "./_assert.mjs";
 import {
   assemble, buildStats, computeXP, computeLivello, computeBadges, buildTOTW, tradErroreDb, cardStats,
+  applicaNomiRegistrati,
 } from "../lib/engine.js";
 
 /* dataset sintetico: 4 giocatori, 2 partite, coerente con le forme delle
@@ -123,6 +124,17 @@ test("tradErroreDb: messaggi Postgres noti tradotti in italiano", () => {
 
 test("tradErroreDb: messaggio sconosciuto passa invariato", () => {
   assertEqual(tradErroreDb("qualcosa di mai visto"), "qualcosa di mai visto");
+});
+
+test("applicaNomiRegistrati: sostituisce il nome solo per chi ha una scheda rivendicata", () => {
+  const risultato = applicaNomiRegistrati(giocatori, { 1: "Mario Rossi" });
+  assertEqual(risultato.find((g) => g.id === 1).nome, "Mario Rossi");
+  assertEqual(risultato.find((g) => g.id === 2).nome, "Luigi");
+  assertEqual(risultato.find((g) => g.id === 1).nickname, null, "gli altri campi non devono cambiare");
+});
+
+test("applicaNomiRegistrati: mappa vuota restituisce l'array invariato", () => {
+  assertEqual(applicaNomiRegistrati(giocatori, {}), giocatori);
 });
 
 export const ok = riepilogo("engine.test.mjs");
