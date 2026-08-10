@@ -1,6 +1,6 @@
 import { test, assert, assertEqual, assertVicino, riepilogo } from "./_assert.mjs";
 import {
-  assemble, buildStats, computeXP, computeLivello, computeBadges, buildTOTW, tradErroreDb,
+  assemble, buildStats, computeXP, computeLivello, computeBadges, buildTOTW, tradErroreDb, cardStats,
 } from "../lib/engine.js";
 
 /* dataset sintetico: 4 giocatori, 2 partite, coerente con le forme delle
@@ -103,6 +103,17 @@ test("buildTOTW: con soli 4 giocatori la 1-3-3-1 va adattata", () => {
   const totw = buildTOTW(data.matches[0], data.P);
   assertEqual(totw.disponibili, 4);
   assert(totw.adattata, "con 4 giocatori per 8 posti la formazione deve risultare adattata");
+});
+
+test("cardStats: solo dati reali, nessun attributo inventato (velocità, tiro...)", () => {
+  const stats = cardStats(S[1]); // Mario
+  const chiavi = stats.map(([k]) => k);
+  assertEqual(chiavi, ["PRES", "GOL", "MEDIA", "MVP", "WIN%", "PUNTI"]);
+  const valori = Object.fromEntries(stats);
+  assertEqual(valori.PRES, 2);
+  assertEqual(valori.GOL, 3);
+  assertEqual(valori.MVP, 1);
+  assertEqual(valori.PUNTI, 4);
 });
 
 test("tradErroreDb: messaggi Postgres noti tradotti in italiano", () => {
