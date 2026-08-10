@@ -52,7 +52,8 @@ export default function SelettoreLega({ legaAttuale, onLegaChange }) {
   return (
     <div className="sl-wrap" ref={ref}>
       <button type="button" className="sl-pill" onClick={() => setAperto((v) => !v)}>
-        {nomeAttuale || "Le tue leghe"} <span className="sl-arrow">▾</span>
+        <span className="sl-nome">{nomeAttuale || "Le tue leghe"}</span>
+        <span className="sl-arrow">▾</span>
       </button>
       {aperto && (
         <div className="sl-panel">

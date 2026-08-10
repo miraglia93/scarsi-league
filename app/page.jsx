@@ -734,13 +734,15 @@ export default function Home() {
     const mostraTuAllTime = sezione === "tu" && mioAllTime && mioAllTime.presenze > 0;
     const legaCorrente = leghe.find((l) => l.id === legaId);
     const linkInvito = legaCorrente ? `${typeof window !== "undefined" ? window.location.origin : ""}/?lega=${legaCorrente.slug}` : "";
+    const nomeLega = legaCorrente?.nome || "Scarsi";
+    const suffissoLeague = !/league/i.test(nomeLega);
     return (
       <>
         <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} notifiche={notifiche}
           legaAttuale={legaId} onLegaChange={sceglieLega} />
         <div className="wrap navpad">
           <div className="brand">
-            <h1>{legaCorrente?.nome || "Scarsi"} <em>League</em></h1>
+            <h1>{nomeLega}{suffissoLeague && <> <em>League</em></>}</h1>
             {(legaCorrente?.struttura || legaCorrente?.orario) && (
               <span className="season">{[legaCorrente?.struttura, legaCorrente?.orario].filter(Boolean).join(" · ")}</span>
             )}
@@ -835,6 +837,8 @@ export default function Home() {
   const mioStats = mioGiocatoreId != null ? players.find((p) => p.id === mioGiocatoreId) : null;
 
   const legaCorrente = leghe.find((l) => l.id === legaId);
+  const nomeLega = legaCorrente?.nome || "Scarsi";
+  const suffissoLeague = !/league/i.test(nomeLega);
 
   return (
     <>
@@ -843,7 +847,7 @@ export default function Home() {
       <div className="wrap navpad">
         <header>
           <div className="brand">
-            <h1>{legaCorrente?.nome || "Scarsi"} <em>League</em></h1>
+            <h1>{nomeLega}{suffissoLeague && <> <em>League</em></>}</h1>
             {(legaCorrente?.struttura || legaCorrente?.orario) && (
               <span className="season">{[legaCorrente?.struttura, legaCorrente?.orario].filter(Boolean).join(" · ")}</span>
             )}

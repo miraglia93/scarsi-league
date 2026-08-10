@@ -291,10 +291,13 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
   .bottombar{display:none;}
 }
 
-.mobiletopbar{align-items:center;gap:10px;padding:0 16px;height:56px;
+.mobiletopbar{align-items:center;gap:8px;padding:0 16px;height:56px;flex-wrap:nowrap;overflow:hidden;
   border-bottom:1px solid rgba(232,237,230,.08);position:sticky;top:0;background:#0B1210;z-index:20;}
+.mobiletopbar .tb-brand{flex:none;}
+.mobiletopbar .sl-wrap{flex:1;min-width:0;margin-right:0;}
+.mobiletopbar .ma-wrap{flex:none;}
 
-.topbar{align-items:center;gap:2px;padding:0 24px;height:64px;
+.topbar{align-items:center;gap:2px;padding:0 24px;height:64px;flex-wrap:nowrap;
   border-bottom:1px solid rgba(232,237,230,.08);position:sticky;top:0;background:#0B1210;z-index:20;}
 .topbar a.tb-brand,.mobiletopbar a.tb-brand{font-family:'Anton';font-size:24px;margin-right:24px;
   white-space:nowrap;color:#E8EDE6;text-decoration:none;text-transform:uppercase;letter-spacing:.4px;
@@ -304,7 +307,9 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 .sl-wrap{position:relative;margin-right:10px;}
 .sl-pill{background:#121B17;border:1px solid rgba(227,197,103,.4);color:#E3C567;
   font-family:'Archivo';font-weight:700;font-size:12px;padding:7px 12px;border-radius:8px;
-  cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  cursor:pointer;display:flex;align-items:center;gap:6px;max-width:100%;}
+.sl-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.sl-arrow{flex:none;}
 .sl-pill:hover{border-color:#E3C567;}
 .sl-arrow{font-size:9px;opacity:.85;}
 .sl-panel{position:absolute;top:calc(100% + 8px);left:0;width:280px;background:#121B17;
@@ -349,7 +354,7 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 .topbar a.tb-avatar.on .tb-hex{border-color:#E3C567;}
 .topbar a.tb-avatar.on:after{display:none;}
 
-.bottombar{position:fixed;left:0;right:0;bottom:0;z-index:30;
+.bottombar{position:fixed;left:0;right:0;bottom:0;z-index:30;flex-wrap:nowrap;
   background:linear-gradient(180deg,#111A16,#0B1210);border-top:1px solid rgba(232,237,230,.08);
   padding:8px 2px calc(8px + env(safe-area-inset-bottom,0px));}
 .bottombar a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
