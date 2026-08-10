@@ -284,18 +284,24 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 /* v1.0 — nav a due livelli */
 .topbar{display:none;}
 .mobiletopbar{display:flex;}
+.mobilelegabar{display:flex;}
 .bottombar{display:flex;}
 @media(min-width:720px){
   .topbar{display:flex;}
   .mobiletopbar{display:none;}
+  .mobilelegabar{display:none;}
   .bottombar{display:none;}
 }
 
 .mobiletopbar{align-items:center;gap:8px;padding:0 16px;height:56px;flex-wrap:nowrap;overflow:hidden;
   border-bottom:1px solid rgba(232,237,230,.08);position:sticky;top:0;background:#0B1210;z-index:20;}
 .mobiletopbar .tb-brand{flex:none;}
-.mobiletopbar .sl-wrap{flex:1;min-width:0;margin-right:0;}
 .mobiletopbar .ma-wrap{flex:none;}
+
+.mobilelegabar{padding:10px 16px;position:sticky;top:56px;background:#0B1210;z-index:19;
+  border-bottom:1px solid rgba(232,237,230,.08);}
+.mobilelegabar .sl-wrap{width:100%;margin-right:0;}
+.mobilelegabar .sl-pill{width:100%;justify-content:space-between;}
 
 .topbar{align-items:center;gap:2px;padding:0 24px;height:64px;flex-wrap:nowrap;
   border-bottom:1px solid rgba(232,237,230,.08);position:sticky;top:0;background:#0B1210;z-index:20;}
@@ -374,7 +380,7 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 
 @media(max-width:719px){
   .navpad{padding-bottom:88px;}
-  .sl-panel{position:fixed;top:64px;left:12px;right:12px;width:auto;}
+  .sl-panel{position:fixed;top:110px;left:12px;right:12px;width:auto;}
 }
 
 .subtabs{display:flex;gap:8px;overflow-x:auto;padding:14px 0 6px;-webkit-overflow-scrolling:touch;

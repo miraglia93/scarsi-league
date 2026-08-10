@@ -37,9 +37,11 @@ export default function AppNav({ active, onNavigate, iniziali, notifiche = {}, l
 
       <nav className="mobiletopbar">
         <a className="tb-brand" href="/">Scarsi <em>League</em></a>
-        <SelettoreLega legaAttuale={legaAttuale} onLegaChange={onLegaChange} />
         <span className="tb-spacer" />
         <MenuAccount iniziali={iniziali} notificaDot={notifiche.tu} />
+      </nav>
+      <nav className="mobilelegabar">
+        <SelettoreLega legaAttuale={legaAttuale} onLegaChange={onLegaChange} />
       </nav>
 
       <nav className="bottombar">
