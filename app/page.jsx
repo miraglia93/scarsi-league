@@ -740,7 +740,10 @@ export default function Home() {
           legaAttuale={legaId} onLegaChange={sceglieLega} />
         <div className="wrap navpad">
           <div className="brand">
-            <h1>Scarsi <em>League</em></h1>
+            <h1>{legaCorrente?.nome || "Scarsi"} <em>League</em></h1>
+            {(legaCorrente?.struttura || legaCorrente?.orario) && (
+              <span className="season">{[legaCorrente?.struttura, legaCorrente?.orario].filter(Boolean).join(" · ")}</span>
+            )}
           </div>
           <ContextBar stagioni={stagioniLega} stagioneSel={stagioneSel}
             onStagioneChange={(v) => setStagioneId(v)} />
@@ -840,8 +843,10 @@ export default function Home() {
       <div className="wrap navpad">
         <header>
           <div className="brand">
-            <h1>Scarsi <em>League</em></h1>
-            <span className="season">{legaCorrente?.nome}{legaCorrente?.struttura ? ` · ${legaCorrente.struttura}` : ""}</span>
+            <h1>{legaCorrente?.nome || "Scarsi"} <em>League</em></h1>
+            {(legaCorrente?.struttura || legaCorrente?.orario) && (
+              <span className="season">{[legaCorrente?.struttura, legaCorrente?.orario].filter(Boolean).join(" · ")}</span>
+            )}
           </div>
           <span className="livebadge">● DATI LIVE DA SUPABASE</span>
         </header>

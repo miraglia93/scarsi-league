@@ -35,7 +35,11 @@ export default function Leghe() {
             <a key={l.slug} className="menu-item" href={`/?lega=${l.slug}`}>
               <div>
                 <b>{l.nome}</b>
-                {l.struttura && <div style={{ fontSize: 12, opacity: .7, marginTop: 2 }}>{l.struttura}</div>}
+                {(l.struttura || l.orario) && (
+                  <div style={{ fontSize: 12, opacity: .7, marginTop: 2 }}>
+                    {[l.struttura, l.orario].filter(Boolean).join(" · ")}
+                  </div>
+                )}
               </div>
               <span className="hint">Richiedi accesso →</span>
             </a>

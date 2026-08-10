@@ -289,8 +289,8 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 
 .topbar{align-items:center;gap:2px;padding:0 24px;height:64px;
   border-bottom:1px solid rgba(232,237,230,.08);position:sticky;top:0;background:#0B1210;z-index:20;}
-.tb-brand{font-family:'Anton';font-size:18px;margin-right:24px;white-space:nowrap;color:#E8EDE6;
-  text-decoration:none;}
+.tb-brand{font-family:'Anton';font-size:20px;margin-right:24px;white-space:nowrap;color:#E8EDE6;
+  text-decoration:none;text-transform:uppercase;letter-spacing:.4px;}
 .tb-brand em{font-style:normal;color:#E3C567;}
 
 .sl-wrap{position:relative;margin-right:10px;}

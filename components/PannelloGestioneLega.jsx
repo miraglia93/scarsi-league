@@ -26,6 +26,11 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const [prestazioniConteggio, setPrestazioniConteggio] = useState({}); // partita_id -> n. prestazioni
   const [msg, setMsg] = useState("");
 
+  // ---------- info lega (struttura sportiva, orario) ----------
+  const [infoStruttura, setInfoStruttura] = useState("");
+  const [infoOrario, setInfoOrario] = useState("");
+  const [infoBusy, setInfoBusy] = useState(false);
+
   // ---------- dati partita ----------
   const [partitaSelId, setPartitaSelId] = useState("");
   const [datiRighe, setDatiRighe] = useState([]);
@@ -92,6 +97,10 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   useEffect(() => { carica(); }, [legaId]);
 
   useEffect(() => {
+    if (legaCorrente) { setInfoStruttura(legaCorrente.struttura || ""); setInfoOrario(legaCorrente.orario || ""); }
+  }, [legaCorrente?.id]);
+
+  useEffect(() => {
     if (!partitaSelId) { setDatiRighe([]); return; }
     (async () => {
       const [{ data: pr }, { data: dm }] = await Promise.all([
@@ -145,6 +154,15 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const togglePubblica = async (valore) => {
     const { error } = await supabase.from("leghe").update({ pubblica: valore }).eq("id", legaId);
     setMsg(error ? "⚠ " + tradErroreDb(error.message) : (valore ? "✅ Lega visibile in /leghe" : "✅ Lega tornata privata"));
+    carica();
+  };
+
+  const salvaInfoLega = async () => {
+    setInfoBusy(true);
+    const { error } = await supabase.from("leghe")
+      .update({ struttura: infoStruttura || null, orario: infoOrario || null }).eq("id", legaId);
+    setInfoBusy(false);
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Info lega aggiornate");
     carica();
   };
 
@@ -633,7 +651,22 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
               </div>
             </div>
           </div>
-          <p className="season">Una lega pubblica compare in /leghe: chiunque può trovarla e chiedere di entrare, senza bisogno di un invito diretto.</p>
+          {isAdmin ? (
+            <div className="betaform">
+              <h3>Dove e quando si gioca</h3>
+              <input placeholder="Struttura sportiva — es. Centro Sportivo Bettinelli" value={infoStruttura}
+                onChange={(e) => setInfoStruttura(e.target.value)} />
+              <input placeholder="Orario — es. Lunedì · 21:30" value={infoOrario}
+                onChange={(e) => setInfoOrario(e.target.value)} />
+              <button className="mini ok" style={{ marginTop: 10 }} onClick={salvaInfoLega} disabled={infoBusy}>
+                {infoBusy ? "Salvataggio…" : "💾 Salva"}
+              </button>
+            </div>
+          ) : (legaCorrente.struttura || legaCorrente.orario) && (
+            <p className="season">{[legaCorrente.struttura, legaCorrente.orario].filter(Boolean).join(" · ")}</p>
+          )}
+
+          <p className="season" style={{ marginTop: 20 }}>Una lega pubblica compare in /leghe: chiunque può trovarla e chiedere di entrare, senza bisogno di un invito diretto.</p>
           {isAdmin ? (
             <button className={`mini ${legaCorrente.pubblica ? "ok" : ""}`} onClick={() => togglePubblica(!legaCorrente.pubblica)}>
               {legaCorrente.pubblica ? "🌐 Pubblica — clicca per rendere privata" : "🔒 Privata — clicca per rendere pubblica"}

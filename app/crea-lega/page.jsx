@@ -16,6 +16,7 @@ export default function CreaLega() {
   const [nome, setNome] = useState("");
   const [slug, setSlug] = useState("");
   const [struttura, setStruttura] = useState("");
+  const [orario, setOrario] = useState("");
   const [legaCreata, setLegaCreata] = useState(null);
 
   const carica = async () => {
@@ -43,7 +44,7 @@ export default function CreaLega() {
   const creaLega = async () => {
     setBusy(true); setMsg("");
     const { data, error } = await supabase.rpc("crea_lega", {
-      p_nome: nome, p_slug: slug.toLowerCase(), p_struttura: struttura || null,
+      p_nome: nome, p_slug: slug.toLowerCase(), p_struttura: struttura || null, p_orario: orario || null,
     });
     setBusy(false);
     if (error) { setMsg("⚠ " + tradErroreDb(error.message)); return; }
@@ -93,6 +94,7 @@ export default function CreaLega() {
             <input placeholder="Nome — es. Champions del Giovedì" value={nome} onChange={(e) => setNome(e.target.value)} />
             <input placeholder="Slug per l'invito — es. champions-giovedi" value={slug} onChange={(e) => setSlug(e.target.value)} />
             <input placeholder="Struttura sportiva (opzionale)" value={struttura} onChange={(e) => setStruttura(e.target.value)} />
+            <input placeholder="Orario — es. Lunedì · 21:30 (opzionale)" value={orario} onChange={(e) => setOrario(e.target.value)} />
             <button onClick={creaLega} disabled={busy || !nome || !slug}>{busy ? "Un attimo…" : "Crea la lega"}</button>
             {msg && <p className="msg">{msg}</p>}
           </>
