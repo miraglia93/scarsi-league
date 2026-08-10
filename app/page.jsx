@@ -506,6 +506,7 @@ export default function Home() {
   const [sel, setSel] = useState(null);
   const [totwId, setTotwId] = useState(null);
   const [soloRegulars, setSoloRegulars] = useState(true);
+  const [ricercaGiocatore, setRicercaGiocatore] = useState("");
 
   // ---------- notifiche in-app (solo locali, nessun servizio esterno) ----------
   const [richiesteInAttesa, setRichiesteInAttesa] = useState(0);
@@ -1076,10 +1077,19 @@ export default function Home() {
                 <button className={!soloRegulars ? "on" : ""} onClick={() => setSoloRegulars(false)}>Tutti ({players.length})</button>
               </span>
             </h2>
+            <input type="search" placeholder="Cerca un giocatore…" value={ricercaGiocatore}
+              onChange={(e) => setRicercaGiocatore(e.target.value)} style={{ marginBottom: 14 }} />
             <div className="grid">
-              {[...shown].sort((a, b) => b.overall - a.overall).map((p) => (
-                <PlayerCard key={p.id} s={p} badges={computeBadges(p, players)} livello={xpDiGiocatore(p.id).livello.nome} onClick={() => setSel(p.id)} />
-              ))}
+              {[...shown]
+                .filter((p) => {
+                  const q = ricercaGiocatore.trim().toLowerCase();
+                  if (!q) return true;
+                  return p.nome.toLowerCase().includes(q) || (p.nick || "").toLowerCase().includes(q);
+                })
+                .sort((a, b) => b.overall - a.overall)
+                .map((p) => (
+                  <PlayerCard key={p.id} s={p} badges={computeBadges(p, players)} livello={xpDiGiocatore(p.id).livello.nome} onClick={() => setSel(p.id)} />
+                ))}
             </div>
           </>
         )}
