@@ -491,55 +491,6 @@ function Consenso({ email, onAccettato }) {
   );
 }
 
-// mostrata solo a chi è membro di più di una lega: sceglie da quale entrare,
-// e può scoprire altre leghe pubbliche a cui chiedere accesso
-function HubLeghe({ mieLeghe, onScegli, iniziali }) {
-  const [pubbliche, setPubbliche] = useState([]);
-
-  useEffect(() => {
-    supabase.rpc("leghe_pubbliche").then(({ data }) => {
-      const mieSlug = new Set(mieLeghe.map((l) => l.slug));
-      setPubbliche((data || []).filter((l) => !mieSlug.has(l.slug)));
-    });
-  }, [mieLeghe]);
-
-  return (
-    <>
-      <AppNav active="lega" iniziali={iniziali} />
-      <div className="wrap navpad">
-        <div className="brand"><h1>Scarsi <em>League</em></h1></div>
-        <h2>Le tue leghe</h2>
-        <div className="menulist">
-          {mieLeghe.map((l) => (
-            <a key={l.id} className="menu-item" href="#" onClick={(e) => { e.preventDefault(); onScegli(l.id); }}>
-              <div>
-                <b>{l.nome}</b>
-                {l.struttura && <div style={{ fontSize: 12, opacity: .7, marginTop: 2 }}>{l.struttura}</div>}
-              </div>
-              <span className="hint">Entra →</span>
-            </a>
-          ))}
-        </div>
-        {pubbliche.length > 0 && (
-          <>
-            <h2 style={{ marginTop: 28 }}>Scopri altre leghe</h2>
-            <div className="menulist">
-              {pubbliche.map((l) => (
-                <a key={l.slug} className="menu-item" href={`/?lega=${l.slug}`}>
-                  <div>
-                    <b>{l.nome}</b>
-                    {l.struttura && <div style={{ fontSize: 12, opacity: .7, marginTop: 2 }}>{l.struttura}</div>}
-                  </div>
-                  <span className="hint">Richiedi accesso →</span>
-                </a>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    </>
-  );
-}
 
 /* ---------- pagina principale ---------- */
 export default function Home() {
@@ -627,8 +578,11 @@ export default function Home() {
       const err = pa.error || gi.error || pr.error || vo.error;
       if (err) { setErrore(tradErroreDb(err.message)); return; }
       setLeghe(le.data || []);
-      // con una sola lega si entra dritti; con più di una si sceglie dall'hub
-      setLegaId(mie.length === 1 ? mie[0].lega_id : null);
+      // con più leghe, riparte da quella scelta l'ultima volta (selettore
+      // in alto), altrimenti dalla prima
+      const ultima = Number(localStorage.getItem("sl_ultima_lega"));
+      const valida = mie.some((m) => m.lega_id === ultima);
+      setLegaId(valida ? ultima : mie[0].lega_id);
       setRaw({ pa: pa.data, gi: gi.data, pr: pr.data, vo: vo.data, st: st.data || [], dm: dm.data || [], premi: pre.data || [] });
     })();
   }, [session]);
@@ -770,9 +724,11 @@ export default function Home() {
     return (p.nick || p.nome).split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   };
 
-  if (legaId == null && mieMembri.length > 1) {
-    return <HubLeghe mieLeghe={leghe} onScegli={(id) => setLegaId(id)} iniziali={mioIniziali()} />;
-  }
+  const sceglieLega = (id) => {
+    setLegaId(id);
+    setStagioneId(null);
+    localStorage.setItem("sl_ultima_lega", String(id));
+  };
 
   if (data?.vuota) {
     const mioAllTime = mioGiocatoreId != null && SAllTime ? SAllTime[mioGiocatoreId] : null;
@@ -781,19 +737,14 @@ export default function Home() {
     const linkInvito = legaCorrente ? `${typeof window !== "undefined" ? window.location.origin : ""}/?lega=${legaCorrente.slug}` : "";
     return (
       <>
-        <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} notifiche={notifiche} />
+        <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} notifiche={notifiche}
+          legaAttuale={legaId} onLegaChange={sceglieLega} />
         <div className="wrap navpad">
           <div className="brand">
             <h1>Scarsi <em>League</em></h1>
-            {mieMembri.length > 1 && (
-              <a className="plink" style={{ display: "block", fontSize: 12, marginTop: 4 }} href="#"
-                onClick={(e) => { e.preventDefault(); setLegaId(null); }}>← Le tue leghe</a>
-            )}
           </div>
           <ContextBar stagioni={stagioniLega} stagioneSel={stagioneSel}
-            onStagioneChange={(v) => setStagioneId(v)}
-            leghe={leghe.length > 1 ? leghe : null} legaId={legaId}
-            onLegaChange={(id) => { setLegaId(id); setStagioneId(null); }} />
+            onStagioneChange={(v) => setStagioneId(v)} />
           {mostraTuAllTime ? (
             <>
               <h2>La tua bacheca</h2>
@@ -885,16 +836,13 @@ export default function Home() {
 
   return (
     <>
-      <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} notifiche={notifiche} />
+      <AppNav active={sezione} onNavigate={naviga} iniziali={mioIniziali()} notifiche={notifiche}
+        legaAttuale={legaId} onLegaChange={sceglieLega} />
       <div className="wrap navpad">
         <header>
           <div className="brand">
             <h1>Scarsi <em>League</em></h1>
             <span className="season">{legaCorrente?.nome}{legaCorrente?.struttura ? ` · ${legaCorrente.struttura}` : ""}</span>
-            {mieMembri.length > 1 && (
-              <a className="plink" style={{ display: "block", fontSize: 12, marginTop: 4 }} href="#"
-                onClick={(e) => { e.preventDefault(); setLegaId(null); }}>← Le tue leghe</a>
-            )}
           </div>
           <span className="livebadge">● DATI LIVE DA SUPABASE</span>
         </header>
@@ -907,9 +855,7 @@ export default function Home() {
         )}
 
         <ContextBar stagioni={stagioniLega} stagioneSel={stagioneSel}
-          onStagioneChange={(v) => setStagioneId(v)}
-          leghe={leghe.length > 1 ? leghe : null} legaId={legaId}
-          onLegaChange={(id) => { setLegaId(id); setStagioneId(null); }} />
+          onStagioneChange={(v) => setStagioneId(v)} />
 
         {sel == null && sezione === "lega" && (
           <>

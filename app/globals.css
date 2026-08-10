@@ -292,6 +292,34 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 .tb-brand{font-family:'Anton';font-size:18px;margin-right:24px;white-space:nowrap;color:#E8EDE6;
   text-decoration:none;}
 .tb-brand em{font-style:normal;color:#E3C567;}
+
+.sl-wrap{position:relative;margin-right:10px;}
+.sl-pill{background:#121B17;border:1px solid rgba(227,197,103,.4);color:#E3C567;
+  font-family:'Archivo';font-weight:700;font-size:12px;padding:7px 12px;border-radius:8px;
+  cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.sl-pill:hover{border-color:#E3C567;}
+.sl-arrow{font-size:9px;opacity:.85;}
+.sl-panel{position:absolute;top:calc(100% + 8px);left:0;width:280px;background:#121B17;
+  border:1px solid rgba(232,237,230,.15);border-radius:10px;padding:14px;z-index:50;
+  box-shadow:0 12px 28px rgba(0,0,0,.4);}
+.sl-titolo{color:#8FA096;font-size:10px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;margin-bottom:8px;}
+.sl-riga{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;
+  background:none;border:none;padding:8px 10px;border-radius:6px;cursor:pointer;text-align:left;
+  font-family:'Archivo';color:#E8EDE6;font-size:13px;font-weight:700;text-decoration:none;
+  box-sizing:border-box;}
+.sl-riga:hover{background:rgba(232,237,230,.06);}
+.sl-riga.sl-attiva{background:rgba(227,197,103,.12);}
+.sl-check{color:#E3C567;font-size:13px;}
+.sl-hint{color:#8FA096;font-size:11px;font-weight:700;white-space:nowrap;}
+.sl-vuoto{color:#8FA096;font-size:12px;margin:4px 10px;}
+.sl-input{width:100%;background:#0B1210;border:1px solid rgba(232,237,230,.15);border-radius:6px;
+  padding:7px 10px;color:#E8EDE6;font-size:12px;font-family:'Archivo';margin-bottom:6px;
+  box-sizing:border-box;}
+.sl-codicebox{display:flex;gap:6px;}
+.sl-codicebox .sl-input{margin-bottom:0;}
+.sl-vai{background:#E3C567;color:#0B1210;border:none;border-radius:6px;padding:0 14px;
+  font-size:12px;font-weight:800;font-family:'Archivo';cursor:pointer;white-space:nowrap;}
 .topbar a{position:relative;display:flex;align-items:center;gap:8px;padding:0 15px;height:64px;
   color:#7E8B83;font-weight:700;font-size:13px;text-decoration:none;letter-spacing:.02em;
   transition:color .18s;}
