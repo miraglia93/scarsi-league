@@ -294,16 +294,16 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 }
 
 .mobiletopbar{align-items:center;gap:8px;padding:0 16px;height:56px;flex-wrap:nowrap;overflow:hidden;
-  border-bottom:1px solid rgba(232,237,230,.08);position:sticky;top:0;background:#0B1210;z-index:20;}
+  margin:0;border-bottom:1px solid rgba(232,237,230,.08);position:sticky;top:0;background:#0B1210;z-index:20;}
 .mobiletopbar .tb-brand{flex:none;}
 .mobiletopbar .ma-wrap{flex:none;}
 
-.mobilelegabar{padding:10px 16px;position:sticky;top:56px;background:#0B1210;z-index:19;
+.mobilelegabar{padding:10px 16px;margin:0;position:sticky;top:56px;background:#0B1210;z-index:19;
   border-bottom:1px solid rgba(232,237,230,.08);}
 .mobilelegabar .sl-wrap{width:100%;margin-right:0;}
 .mobilelegabar .sl-pill{width:100%;justify-content:space-between;}
 
-.topbar{align-items:center;gap:2px;padding:0 24px;height:64px;flex-wrap:nowrap;
+.topbar{align-items:center;gap:2px;padding:0 24px;height:64px;flex-wrap:nowrap;margin:0;
   border-bottom:1px solid rgba(232,237,230,.08);position:sticky;top:0;background:#0B1210;z-index:20;}
 .topbar a.tb-brand,.mobiletopbar a.tb-brand{font-family:'Anton';font-size:24px;margin-right:24px;
   white-space:nowrap;color:#E8EDE6;text-decoration:none;text-transform:uppercase;letter-spacing:.4px;
@@ -360,7 +360,7 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 .topbar a.tb-avatar.on .tb-hex{border-color:#E3C567;}
 .topbar a.tb-avatar.on:after{display:none;}
 
-.bottombar{position:fixed;left:0;right:0;bottom:0;z-index:30;flex-wrap:nowrap;
+.bottombar{position:fixed;left:0;right:0;bottom:0;z-index:30;flex-wrap:nowrap;margin:0;
   background:linear-gradient(180deg,#111A16,#0B1210);border-top:1px solid rgba(232,237,230,.08);
   padding:8px 2px calc(8px + env(safe-area-inset-bottom,0px));}
 .bottombar a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
