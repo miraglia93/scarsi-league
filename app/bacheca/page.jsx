@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { assemble, buildStats, computeXP, computeLivello, tradErroreDb } from "../../lib/engine";
 import AppNav from "../../components/AppNav";
 import { IconEdit, IconLock, IconLogout } from "../../components/icons";
+import SpiegaXP from "../../components/SpiegaXP";
 
 // "statistiche complete": a differenza di Lega → Tu (il cartellino di
 // UNA lega specifica), qui sommiamo le statistiche su TUTTE le leghe
@@ -143,6 +144,7 @@ export default function Bacheca() {
                     <div><b>{aggregato.xp.ripartizione.voto || 0}</b><span>Voti alti</span></div>
                     <div><b>{aggregato.xp.ripartizione.cleanSheet || 0}</b><span>Clean sheet</span></div>
                   </div>
+                  <SpiegaXP />
                 </div>
               </>
             )}

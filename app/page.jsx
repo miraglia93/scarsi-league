@@ -12,6 +12,7 @@ import ContextBar from "../components/ContextBar";
 import { IconEdit, IconLock, IconLogout } from "../components/icons";
 import CopyButton from "../components/CopyButton";
 import PannelloGestioneLega from "../components/PannelloGestioneLega";
+import SpiegaXP from "../components/SpiegaXP";
 
 /* ============================================================
    SCARSI LEAGUE — Next.js + Supabase (dati live)
@@ -142,6 +143,7 @@ function DettaglioGiocatore({ s, players, S, VOTES, rel, PREMI, ruoloUtente, mos
               <div><b>{xp.ripartizione.cleanSheet || 0}</b><span>Clean sheet</span></div>
             </div>
             <div className="xp-nota">XP cumulativo di tutte le stagioni — non cambia con il selettore stagione qui sopra.</div>
+            <SpiegaXP />
           </div>
         )}
         <div className="kv">
