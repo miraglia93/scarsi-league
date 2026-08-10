@@ -205,7 +205,7 @@ export default function Partita() {
         <RecapImageButton
           nomeFile={`scarsi-league-${partita.data}.png`}
           dati={{
-            legaNome: "Scarsi League",
+            legaNome: partita.struttura || "",
             dataTesto: fmtData(partita.data, { year: true }),
             squadra1: squadre[0], squadra2: squadre[1], gol1: gol[0], gol2: gol[1],
             mvp: mvp ? { nome: mvp.nickname || mvp.nome, voto: mvp.voto } : null,
