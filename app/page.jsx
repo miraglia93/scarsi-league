@@ -452,7 +452,7 @@ function RichiediAccesso({ email }) {
   );
 }
 
-const VERSIONE_PRIVACY = "2026-09";
+const VERSIONE_PRIVACY = "2026-10";
 
 function Consenso({ email, onAccettato }) {
   const [ok, setOk] = useState(false);
@@ -490,11 +490,52 @@ function Consenso({ email, onAccettato }) {
   );
 }
 
+function CompletaRegistrazione({ email, onCompletato }) {
+  const [nome, setNome] = useState("");
+  const [cognome, setCognome] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const pronto = nome.trim() && cognome.trim();
+
+  const salva = async () => {
+    if (!pronto) { setErr("Nome e cognome sono obbligatori."); return; }
+    setBusy(true); setErr("");
+    const { error } = await supabase.from("utenti_piattaforma").upsert({
+      email: (email || "").toLowerCase(),
+      nome: nome.trim(), cognome: cognome.trim(), telefono: telefono.trim() || null,
+    }, { onConflict: "email" });
+    setBusy(false);
+    if (error) setErr(tradErroreDb(error.message)); else onCompletato();
+  };
+
+  return (
+    <div className="login">
+      <h1>Scarsi <em>League</em></h1>
+      <p className="season">Completa la registrazione</p>
+      <p className="msg">
+        Nome e cognome ci servono per riconoscerti nella lega — restano gli
+        stessi ovunque, anche se entri in più leghe. Il telefono è
+        facoltativo: serve solo per essere contattato in caso di imprevisti
+        prima di una partita.
+      </p>
+      <input placeholder="Nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+      <input placeholder="Cognome" value={cognome} onChange={(e) => setCognome(e.target.value)} />
+      <input placeholder="Telefono (facoltativo)" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
+      <button onClick={salva} disabled={!pronto || busy}>{busy ? "Un attimo…" : "Continua"}</button>
+      {err && <p className="msg">⚠ {err}</p>}
+      <p className="msg"><a className="plink" href="#" onClick={(e) => { e.preventDefault(); supabase.auth.signOut(); }}>Esci</a></p>
+    </div>
+  );
+}
+
 
 /* ---------- pagina principale ---------- */
 export default function Home() {
   const [session, setSession] = useState(undefined); // undefined = loading
   const [consenso, setConsenso] = useState(null); // null = verifica, false = da accettare
+  const [identita, setIdentita] = useState(null); // null = verifica, false = da completare (nome/cognome)
   const [autorizzato, setAutorizzato] = useState(null); // null = verifica in corso
   const [mieMembri, setMieMembri] = useState([]); // righe membri_autorizzati dell'utente, una per lega
   const [leghe, setLeghe] = useState([]);
@@ -536,11 +577,18 @@ export default function Home() {
   useEffect(() => {
     if (!session) return;
     (async () => {
-      // 1) consenso privacy registrato?
+      // 1) consenso privacy registrato per QUESTA versione? (se la policy cambia,
+      // chi aveva accettato una versione precedente deve rivederla)
       const mailC = (session.user?.email || "").toLowerCase();
-      const { data: c } = await supabase.from("consensi").select("email").eq("email", mailC).maybeSingle();
+      const { data: c } = await supabase.from("consensi").select("email")
+        .eq("email", mailC).eq("versione", VERSIONE_PRIVACY).maybeSingle();
       if (!c) { setConsenso(false); return; }
       setConsenso(true);
+      // 1b) nome/cognome registrati? (una volta sola, a livello di account)
+      const { data: idRow } = await supabase.from("utenti_piattaforma")
+        .select("nome, cognome").eq("email", mailC).maybeSingle();
+      if (!idRow || !idRow.nome || !idRow.cognome) { setIdentita(false); return; }
+      setIdentita(true);
       // 2) verifica whitelist: la RLS mostra solo le proprie righe (una per lega)
       const mail = (session.user?.email || "").toLowerCase();
       const { data: mie } = await supabase
@@ -704,6 +752,9 @@ export default function Home() {
   if (!session) return <Login />;
   if (consenso === false) {
     return <Consenso email={session.user?.email} onAccettato={() => { setConsenso(true); window.location.reload(); }} />;
+  }
+  if (identita === false) {
+    return <CompletaRegistrazione email={session.user?.email} onCompletato={() => { setIdentita(true); window.location.reload(); }} />;
   }
   if (autorizzato === false) {
     return <RichiediAccesso email={session.user?.email} />;

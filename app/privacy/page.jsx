@@ -4,7 +4,7 @@ export default function Privacy() {
   return (
     <div className="wrap" style={{ maxWidth: 720 }}>
       <h1>Privacy <em>Policy</em></h1>
-      <p className="season">Scarsi League — versione 2026-09</p>
+      <p className="season">Scarsi League — versione 2026-10</p>
 
       <h2>Chi siamo</h2>
       <p>
@@ -20,11 +20,15 @@ export default function Privacy() {
 
       <h2>Quali dati raccogliamo</h2>
       <p>
-        <b>Se ti registri</b>: la tua email (per l&apos;accesso) e, se usi Google,
-        il nome del tuo account. <b>Come giocatore</b>: nome visualizzato su
-        Fubles, ruolo, presenze, risultati, gol, voti delle pagelle e premi,
-        importati dalle pagine pubbliche delle partite su Fubles a cui hai
-        partecipato.
+        <b>Se ti registri</b>: la tua email (per l&apos;accesso), nome e cognome
+        (per riconoscerti nella lega) e, facoltativo, il tuo numero di
+        telefono — solo per essere contattato in caso di imprevisti prima
+        di una partita (es. un rinvio). Nome, cognome e telefono sono
+        legati al tuo account, non a una singola lega: se entri in più
+        leghe restano gli stessi ovunque. <b>Come giocatore</b>: nome
+        visualizzato su Fubles, ruolo, presenze, risultati, gol, voti
+        delle pagelle e premi, importati dalle pagine pubbliche delle
+        partite su Fubles a cui hai partecipato.
       </p>
 
       <h2>Perché e per quanto</h2>
