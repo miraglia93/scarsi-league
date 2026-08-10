@@ -13,7 +13,8 @@ import SubTabs from "./SubTabs";
 // montato dentro la sezione "Lega" per chi è admin di quella lega
 // specifica, e anche dalla pagina /admin standalone. legaId è sempre
 // quello scelto dal selettore in alto — qui non si cambia lega.
-export default function PannelloGestioneLega({ legaId }) {
+export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
+  const isAdmin = ruoloUtente === "admin";
   const [sezioneAdmin, setSezioneAdmin] = useState("partite"); // partite | accessi | struttura | premi
   const [legaCorrente, setLegaCorrente] = useState(null);
   const [richieste, setRichieste] = useState([]);
@@ -132,6 +133,12 @@ export default function PannelloGestioneLega({ legaId }) {
     if (!confirm(`Revocare l'accesso a ${email}?`)) return;
     const { error } = await supabase.from("membri_autorizzati").delete().eq("email", email).eq("lega_id", legaId);
     setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Accesso revocato");
+    carica();
+  };
+
+  const cambiaRuolo = async (email, ruolo) => {
+    const { error } = await supabase.from("membri_autorizzati").update({ ruolo }).eq("email", email).eq("lega_id", legaId);
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Ruolo aggiornato");
     carica();
   };
 
@@ -575,10 +582,17 @@ export default function PannelloGestioneLega({ legaId }) {
                   <tr key={m.email}>
                     <td>{m.email}</td>
                     <td className="pname">{m.nome || "—"}</td>
-                    <td>{m.ruolo === "admin" ? "👑 admin" : "membro"}</td>
+                    <td>
+                      {isAdmin && m.ruolo !== "admin" ? (
+                        <select value={m.ruolo} onChange={(e) => cambiaRuolo(m.email, e.target.value)}>
+                          <option value="membro">membro</option>
+                          <option value="coorganizzatore">🛡 coorganizzatore</option>
+                        </select>
+                      ) : m.ruolo === "admin" ? "👑 admin" : m.ruolo === "coorganizzatore" ? "🛡 coorganizzatore" : "membro"}
+                    </td>
                     <td>{m.giocatore_id ? `#${m.giocatore_id}` : "—"}</td>
                     <td>{new Date(m.aggiunto_il).toLocaleDateString("it-IT")}</td>
-                    <td>{m.ruolo !== "admin" && (
+                    <td>{(isAdmin ? m.ruolo !== "admin" : m.ruolo === "membro") && (
                       <button className="mini no" onClick={() => revoca(m.email)}>Revoca</button>
                     )}</td>
                   </tr>
@@ -620,9 +634,13 @@ export default function PannelloGestioneLega({ legaId }) {
             </div>
           </div>
           <p className="season">Una lega pubblica compare in /leghe: chiunque può trovarla e chiedere di entrare, senza bisogno di un invito diretto.</p>
-          <button className={`mini ${legaCorrente.pubblica ? "ok" : ""}`} onClick={() => togglePubblica(!legaCorrente.pubblica)}>
-            {legaCorrente.pubblica ? "🌐 Pubblica — clicca per rendere privata" : "🔒 Privata — clicca per rendere pubblica"}
-          </button>
+          {isAdmin ? (
+            <button className={`mini ${legaCorrente.pubblica ? "ok" : ""}`} onClick={() => togglePubblica(!legaCorrente.pubblica)}>
+              {legaCorrente.pubblica ? "🌐 Pubblica — clicca per rendere privata" : "🔒 Privata — clicca per rendere pubblica"}
+            </button>
+          ) : (
+            <span className="season">{legaCorrente.pubblica ? "🌐 Pubblica" : "🔒 Privata"} · solo l&apos;admin può cambiarlo</span>
+          )}
 
           <h2 style={{ marginTop: 32 }}>Stagioni ({stagioni.length})</h2>
           <div style={{ overflowX: "auto" }}>
@@ -648,9 +666,11 @@ export default function PannelloGestioneLega({ legaId }) {
                         <button className="mini ok" disabled={busy || !stagioneModifiche[s.id]} onClick={() => salvaStagione(s)}>💾</button>{" "}
                         {!s.attiva && <button className="mini" disabled={busy} onClick={() => impostaAttiva(s)}>Imposta attiva</button>}{" "}
                         {!s.fine && <button className="mini" disabled={busy} onClick={() => chiudiStagione(s)}>Chiudi</button>}{" "}
-                        <button className="mini no" disabled={nPartite > 0}
-                          title={nPartite > 0 ? "Sposta o elimina prima le partite collegate" : ""}
-                          onClick={() => apriElimina("stagione", s.id, s.nome)}>Elimina</button>
+                        {isAdmin && (
+                          <button className="mini no" disabled={nPartite > 0}
+                            title={nPartite > 0 ? "Sposta o elimina prima le partite collegate" : ""}
+                            onClick={() => apriElimina("stagione", s.id, s.nome)}>Elimina</button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -671,13 +691,14 @@ export default function PannelloGestioneLega({ legaId }) {
 
           <h2 style={{ marginTop: 32 }}>I tuoi dati</h2>
           <p className="season">
-            Puoi scaricare in qualsiasi momento tutti i dati di questa lega, o eliminarla
-            del tutto — cancella anche i dati di membri, partite, voti e premi collegati.
+            Puoi scaricare in qualsiasi momento tutti i dati di questa lega{isAdmin ? ", o eliminarla del tutto — cancella anche i dati di membri, partite, voti e premi collegati." : "."}
           </p>
           <button className="mini" onClick={esportaDati}>⬇ Esporta i dati della lega</button>{" "}
-          <button className="mini no" onClick={() => apriElimina("lega", legaId, legaCorrente.nome)}>
-            Elimina questa lega
-          </button>
+          {isAdmin && (
+            <button className="mini no" onClick={() => apriElimina("lega", legaId, legaCorrente.nome)}>
+              Elimina questa lega
+            </button>
+          )}
         </>
       )}
 

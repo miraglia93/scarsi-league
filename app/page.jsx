@@ -596,9 +596,9 @@ export default function Home() {
   const ruoloUtente = mioMembro?.ruolo || "membro";
   const mioGiocatoreId = mioMembro?.giocatore_id ?? null;
 
-  // richieste in attesa (solo per l'admin, per il pallino su "Tu")
+  // richieste in attesa (per admin e coorganizzatori, per il pallino su "Tu")
   useEffect(() => {
-    if (!legaId || ruoloUtente !== "admin") { setRichiesteInAttesa(0); return; }
+    if (!legaId || (ruoloUtente !== "admin" && ruoloUtente !== "coorganizzatore")) { setRichiesteInAttesa(0); return; }
     supabase.from("richieste_accesso").select("id", { count: "exact", head: true })
       .eq("lega_id", legaId).eq("stato", "in_attesa")
       .then(({ count }) => setRichiesteInAttesa(count || 0));
@@ -649,7 +649,7 @@ export default function Home() {
     setNotificaPremio(false);
   }, [sezione, raw, legaId, mioGiocatoreId]);
 
-  const notifiche = { partite: notificaPartite, tu: (ruoloUtente === "admin" && richiesteInAttesa > 0) || notificaPremio };
+  const notifiche = { partite: notificaPartite, tu: ((ruoloUtente === "admin" || ruoloUtente === "coorganizzatore") && richiesteInAttesa > 0) || notificaPremio };
 
   const data = useMemo(() => {
     if (!raw || legaId == null) return null;
@@ -862,11 +862,11 @@ export default function Home() {
               { key: "panoramica", label: "Panoramica" },
               { key: "totw", label: "Team of the Week" },
               { key: "hof", label: "Hall of Fame", href: "/hall-of-fame" },
-              ...(ruoloUtente === "admin" ? [{ key: "gestione", label: "⚙ Gestione" }] : []),
+              ...(ruoloUtente === "admin" || ruoloUtente === "coorganizzatore" ? [{ key: "gestione", label: "⚙ Gestione" }] : []),
             ]} />
 
-            {legaSub === "gestione" && ruoloUtente === "admin" && (
-              <PannelloGestioneLega legaId={legaId} />
+            {legaSub === "gestione" && (ruoloUtente === "admin" || ruoloUtente === "coorganizzatore") && (
+              <PannelloGestioneLega legaId={legaId} ruoloUtente={ruoloUtente} />
             )}
 
             {legaSub === "panoramica" && (

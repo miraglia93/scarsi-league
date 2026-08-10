@@ -126,7 +126,7 @@ export default function Profilo() {
           ))}
         </select>
       )}
-      <p className="season" style={{ marginTop: 8 }}>{me.email} {me.ruolo === "admin" && "· 👑 admin"}</p>
+      <p className="season" style={{ marginTop: 8 }}>{me.email} {me.ruolo === "admin" && "· 👑 admin"}{me.ruolo === "coorganizzatore" && "· 🛡 coorganizzatore"}</p>
       {msg && <div className="note" style={{ marginTop: 10 }}>{msg}</div>}
 
       {!scheda ? (

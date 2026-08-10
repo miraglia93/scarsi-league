@@ -15,12 +15,14 @@ import PannelloGestioneLega from "../../components/PannelloGestioneLega";
 export default function Admin() {
   const [stato, setStato] = useState("verifica"); // verifica | no-login | no-admin | ok
   const [sezione, setSezione] = useState("gestione"); // gestione | piattaforma
-  const [adminLeghe, setAdminLeghe] = useState([]); // lega_id di cui sono admin
+  const [mieGestioni, setMieGestioni] = useState([]); // [{ ruolo, lega_id }] dove sono admin o coorganizzatore
   const [adminLegaId, setAdminLegaId] = useState(null);
   const [leghe, setLeghe] = useState([]);
   const [superAdmin, setSuperAdmin] = useState(false);
   const [utentiPiattaforma, setUtentiPiattaforma] = useState([]);
   const [msg, setMsg] = useState("");
+
+  const ruoloUtente = mieGestioni.find((m) => m.lega_id === adminLegaId)?.ruolo || "membro";
 
   const caricaPiattaforma = async () => {
     const { data } = await supabase.from("utenti_piattaforma").select("*").order("creato_il");
@@ -34,10 +36,10 @@ export default function Admin() {
       const mail = (session.user?.email || "").toLowerCase();
       const { data: mie } = await supabase.from("membri_autorizzati")
         .select("ruolo, lega_id").eq("email", mail);
-      const admins = (mie || []).filter((m) => m.ruolo === "admin");
-      if (!admins.length) { setStato("no-admin"); return; }
-      const ids = admins.map((a) => a.lega_id);
-      setAdminLeghe(ids);
+      const gestioni = (mie || []).filter((m) => m.ruolo === "admin" || m.ruolo === "coorganizzatore");
+      if (!gestioni.length) { setStato("no-admin"); return; }
+      setMieGestioni(gestioni);
+      const ids = gestioni.map((g) => g.lega_id);
       setAdminLegaId(ids[0]);
       const { data: le } = await supabase.from("leghe").select("id, nome").in("id", ids);
       setLeghe(le || []);
@@ -56,7 +58,7 @@ export default function Admin() {
 
   if (stato === "verifica") return <div className="centered">Verifica permessi…</div>;
   if (stato === "no-login") return <div className="centered"><a className="plink" href="/">Fai login per continuare</a></div>;
-  if (stato === "no-admin") return <div className="centered">Solo l&apos;admin può accedere a questa pagina. <a className="plink" href="/">← Torna alla lega</a></div>;
+  if (stato === "no-admin") return <div className="centered">Solo admin e coorganizzatori possono accedere a questa pagina. <a className="plink" href="/">← Torna alla lega</a></div>;
 
   return (
     <>
@@ -66,7 +68,7 @@ export default function Admin() {
           <h1>Pannello <em>Admin</em></h1>
           <span className="season"><a className="plink" href="/?sezione=tu">← Torna alla bacheca</a></span>
         </div>
-        {adminLeghe.length > 1 && (
+        {mieGestioni.length > 1 && (
           <select className="legasel" value={adminLegaId ?? ""} onChange={(e) => setAdminLegaId(Number(e.target.value))}>
             {leghe.map((l) => (
               <option key={l.id} value={l.id}>Gestisci: {l.nome}</option>
@@ -83,7 +85,7 @@ export default function Admin() {
         )}
 
         {sezione === "gestione" && adminLegaId != null && (
-          <PannelloGestioneLega legaId={adminLegaId} />
+          <PannelloGestioneLega legaId={adminLegaId} ruoloUtente={ruoloUtente} />
         )}
 
         {sezione === "piattaforma" && superAdmin && (
