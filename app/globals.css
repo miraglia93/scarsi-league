@@ -1,9 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&display=swap');
 
 *{box-sizing:border-box;}
+html{background:#0B1210;overscroll-behavior-y:none;}
 body{margin:0;min-height:100vh;background:#0B1210;color:#E8EDE6;font-family:'Archivo',sans-serif;
   background-image:radial-gradient(ellipse 90% 55% at 50% -10%,rgba(72,120,86,.28),transparent),
-    repeating-linear-gradient(90deg,transparent 0 119px,rgba(232,237,230,.025) 119px 120px);}
+    repeating-linear-gradient(90deg,transparent 0 119px,rgba(232,237,230,.025) 119px 120px);
+  overscroll-behavior-y:none;}
 .wrap{max-width:1060px;margin:0 auto;padding:24px 20px 80px;}
 .brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;}
 h1{font-family:'Anton',sans-serif;font-size:clamp(34px,6vw,56px);letter-spacing:.5px;margin:0;
@@ -281,16 +283,22 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 
 /* v1.0 — nav a due livelli */
 .topbar{display:none;}
+.mobiletopbar{display:flex;}
 .bottombar{display:flex;}
 @media(min-width:720px){
   .topbar{display:flex;}
+  .mobiletopbar{display:none;}
   .bottombar{display:none;}
 }
 
+.mobiletopbar{align-items:center;gap:10px;padding:0 16px;height:56px;
+  border-bottom:1px solid rgba(232,237,230,.08);position:sticky;top:0;background:#0B1210;z-index:20;}
+
 .topbar{align-items:center;gap:2px;padding:0 24px;height:64px;
   border-bottom:1px solid rgba(232,237,230,.08);position:sticky;top:0;background:#0B1210;z-index:20;}
-.tb-brand{font-family:'Anton';font-size:20px;margin-right:24px;white-space:nowrap;color:#E8EDE6;
-  text-decoration:none;text-transform:uppercase;letter-spacing:.4px;}
+.topbar a.tb-brand,.mobiletopbar a.tb-brand{font-family:'Anton';font-size:24px;margin-right:24px;
+  white-space:nowrap;color:#E8EDE6;text-decoration:none;text-transform:uppercase;letter-spacing:.4px;
+  height:auto;padding:0;}
 .tb-brand em{font-style:normal;color:#E3C567;}
 
 .sl-wrap{position:relative;margin-right:10px;}
@@ -359,7 +367,10 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
   background:#E05C4B;border:1.5px solid #0B1210;}
 .notifica-dot-avatar{top:0;right:0;}
 
-@media(max-width:719px){.navpad{padding-bottom:88px;}}
+@media(max-width:719px){
+  .navpad{padding-bottom:88px;}
+  .sl-panel{position:fixed;top:64px;left:12px;right:12px;width:auto;}
+}
 
 .subtabs{display:flex;gap:8px;overflow-x:auto;padding:14px 0 6px;-webkit-overflow-scrolling:touch;
   scrollbar-width:none;}

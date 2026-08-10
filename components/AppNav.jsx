@@ -35,6 +35,13 @@ export default function AppNav({ active, onNavigate, iniziali, notifiche = {}, l
         <MenuAccount iniziali={iniziali} notificaDot={notifiche.tu} />
       </nav>
 
+      <nav className="mobiletopbar">
+        <a className="tb-brand" href="/">Scarsi <em>League</em></a>
+        <SelettoreLega legaAttuale={legaAttuale} onLegaChange={onLegaChange} />
+        <span className="tb-spacer" />
+        <MenuAccount iniziali={iniziali} notificaDot={notifiche.tu} />
+      </nav>
+
       <nav className="bottombar">
         {VOCI.map(({ key, label, Icon }) => (
           <a key={key} href={href(key)} className={active === key ? "on" : ""} onClick={click(key)}>
