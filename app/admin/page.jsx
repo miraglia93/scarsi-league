@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { tradErroreDb } from "../../lib/engine";
-import { parseImportFubles } from "../../lib/importFubles";
+import {
+  parseImportFubles, calcolaAnteprimaImport, partiteDaInserire as calcolaPartiteDaInserire,
+  trovaGiocatoriNuovi, costruisciPrestazioni, costruisciVoti,
+} from "../../lib/importFubles";
 import AppNav from "../../components/AppNav";
 import SubTabs from "../../components/SubTabs";
 
@@ -174,14 +177,7 @@ export default function Admin() {
       partiteText: importPartiteText, prestazioniText: importPrestazioniText, votiText: importVotiText, legaId: adminLegaId,
     });
     if (parsed.errori.length) { setImportPreview(null); setImportMsg("⚠ " + parsed.errori.join(" · ")); return; }
-    const matchIdsEsistenti = new Set(partite.map((p) => p.match_id));
-    const fublesIdEsistenti = new Set(giocatori.map((g) => g.fubles_user_id).filter(Boolean));
-    const nuoveMatchIds = new Set(parsed.partite.filter((p) => !matchIdsEsistenti.has(p.match_id)).map((p) => p.match_id));
-    const nPartiteEsistenti = parsed.partite.length - nuoveMatchIds.size;
-    const nGiocatoriNuovi = parsed.giocatoriNuovi.filter((g) => !fublesIdEsistenti.has(g.fubles_user_id)).length;
-    const nPrestazioni = parsed.prestazioni.filter((p) => nuoveMatchIds.has(p.match_id)).length;
-    const nVoti = parsed.voti.filter((v) => nuoveMatchIds.has(v.match_id)).length;
-    setImportPreview({ parsed, nuoveMatchIds, nPartiteEsistenti, nGiocatoriNuovi, nPrestazioni, nVoti });
+    setImportPreview({ parsed, ...calcolaAnteprimaImport(parsed, partite, giocatori) });
   };
 
   const confermaImport = async () => {
@@ -189,20 +185,20 @@ export default function Admin() {
     setImportBusy(true); setImportMsg("");
     const { parsed, nuoveMatchIds } = importPreview;
     try {
-      const partiteDaInserire = parsed.partite.filter((p) => nuoveMatchIds.has(p.match_id));
+      const nuovePartite = calcolaPartiteDaInserire(parsed, nuoveMatchIds);
       let matchIdAId = {};
-      if (partiteDaInserire.length) {
-        const { data: inserite, error } = await supabase.from("partite").insert(partiteDaInserire).select("id, match_id");
+      if (nuovePartite.length) {
+        const { data: inserite, error } = await supabase.from("partite").insert(nuovePartite).select("id, match_id");
         if (error) throw error;
         (inserite || []).forEach((p) => { matchIdAId[p.match_id] = p.id; });
       }
 
       const fublesIdAId = {};
       giocatori.forEach((g) => { if (g.fubles_user_id) fublesIdAId[g.fubles_user_id] = g.id; });
-      const giocatoriDaCreare = parsed.giocatoriNuovi.filter((g) => !fublesIdAId[g.fubles_user_id]);
-      if (giocatoriDaCreare.length) {
+      const nuoviGiocatori = trovaGiocatoriNuovi(parsed, giocatori);
+      if (nuoviGiocatori.length) {
         const { data: creati, error } = await supabase.from("giocatori").insert(
-          giocatoriDaCreare.map((g) => ({
+          nuoviGiocatori.map((g) => ({
             nome: g.nome, lega_id: adminLegaId, fubles_user_id: g.fubles_user_id,
             fubles_url: g.fubles_url, ruolo_prevalente: g.ruolo_prevalente, foto_disponibile: g.foto_disponibile,
           })),
@@ -211,35 +207,24 @@ export default function Admin() {
         (creati || []).forEach((g) => { fublesIdAId[g.fubles_user_id] = g.id; });
       }
 
-      const prestazioniDaInserire = parsed.prestazioni
-        .filter((p) => nuoveMatchIds.has(p.match_id) && matchIdAId[p.match_id] && fublesIdAId[p.fubles_user_id])
-        .map((p) => ({
-          partita_id: matchIdAId[p.match_id], giocatore_id: fublesIdAId[p.fubles_user_id],
-          squadra: p.squadra, ruolo: p.ruolo, voto: p.voto, gol: p.gol, motm: p.motm,
-          premio: p.premio, esito: p.esito, gol_squadra: p.gol_squadra, gol_subiti: p.gol_subiti, note: p.note,
-        }));
-      if (prestazioniDaInserire.length) {
-        const { error } = await supabase.from("prestazioni").upsert(prestazioniDaInserire, { onConflict: "partita_id,giocatore_id" });
+      const nuovePrestazioni = costruisciPrestazioni(parsed, nuoveMatchIds, matchIdAId, fublesIdAId);
+      if (nuovePrestazioni.length) {
+        const { error } = await supabase.from("prestazioni").upsert(nuovePrestazioni, { onConflict: "partita_id,giocatore_id" });
         if (error) throw error;
       }
 
-      const votiDaInserire = parsed.voti
-        .filter((v) => nuoveMatchIds.has(v.match_id) && matchIdAId[v.match_id] && fublesIdAId[v.valutato_fubles_user_id] && fublesIdAId[v.votante_fubles_user_id])
-        .map((v) => ({
-          partita_id: matchIdAId[v.match_id], valutato_id: fublesIdAId[v.valutato_fubles_user_id],
-          votante_id: fublesIdAId[v.votante_fubles_user_id], voto: v.voto, commento: v.commento,
-        }));
-      if (votiDaInserire.length) {
-        const { error } = await supabase.from("voti_ricevuti").insert(votiDaInserire);
+      const nuoviVoti = costruisciVoti(parsed, nuoveMatchIds, matchIdAId, fublesIdAId);
+      if (nuoviVoti.length) {
+        const { error } = await supabase.from("voti_ricevuti").insert(nuoviVoti);
         if (error) throw error;
       }
 
       await supabase.from("import_log").insert({
         fonte: "admin-ui-import",
-        errori: `Import manuale: ${partiteDaInserire.length} partite, ${giocatoriDaCreare.length} giocatori nuovi, ${prestazioniDaInserire.length} prestazioni, ${votiDaInserire.length} voti.`,
+        errori: `Import manuale: ${nuovePartite.length} partite, ${nuoviGiocatori.length} giocatori nuovi, ${nuovePrestazioni.length} prestazioni, ${nuoviVoti.length} voti.`,
       });
 
-      setImportMsg(`✅ Importate ${partiteDaInserire.length} partite, ${giocatoriDaCreare.length} giocatori nuovi, ${prestazioniDaInserire.length} prestazioni, ${votiDaInserire.length} voti.`);
+      setImportMsg(`✅ Importate ${nuovePartite.length} partite, ${nuoviGiocatori.length} giocatori nuovi, ${nuovePrestazioni.length} prestazioni, ${nuoviVoti.length} voti.`);
       setImportPreview(null);
       setImportPartiteText(""); setImportPrestazioniText(""); setImportVotiText("");
       carica();

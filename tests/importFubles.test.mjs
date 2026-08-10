@@ -1,5 +1,8 @@
 import { test, assert, assertEqual, riepilogo } from "./_assert.mjs";
-import { parseImportFubles } from "../lib/importFubles.js";
+import {
+  parseImportFubles, calcolaAnteprimaImport, partiteDaInserire,
+  trovaGiocatoriNuovi, costruisciPrestazioni, costruisciVoti,
+} from "../lib/importFubles.js";
 
 console.log("importFubles.js");
 
@@ -91,6 +94,53 @@ test("avvisa (senza bloccare) se una riga di PRESTAZIONI_GIOCATORI non ha un pro
   const r7 = parseImportFubles({ partiteText, prestazioniText: prestazioniConRigaRotta, votiText, legaId: 1 });
   assertEqual(r7.errori, []);
   assert(r7.avvisi.some((a) => a.includes("PRESTAZIONI_GIOCATORI")), "dovrebbe avvisare della riga senza profilo_fubles");
+});
+
+// ---------- confronto col database (usato da analizzaImport/confermaImport in admin) ----------
+
+test("calcolaAnteprimaImport: match_id già in lega -> partita e dati collegati esclusi dai conteggi", () => {
+  const giaEsistenti = [{ match_id: "2026-07-20_BETTINELLI_BIANCHI-NERI" }];
+  const anteprima = calcolaAnteprimaImport(r, giaEsistenti, []);
+  assertEqual(anteprima.nuoveMatchIds.size, 0);
+  assertEqual(anteprima.nPartiteEsistenti, 1);
+  assertEqual(anteprima.nPrestazioni, 0);
+  assertEqual(anteprima.nVoti, 0);
+});
+
+test("calcolaAnteprimaImport: match_id nuovo, giocatore già in lega -> non riconta il giocatore", () => {
+  const giocatoriEsistenti = [{ fubles_user_id: "577876" }]; // Luciano Scotti già in lega
+  const anteprima = calcolaAnteprimaImport(r, [], giocatoriEsistenti);
+  assertEqual(anteprima.nuoveMatchIds.size, 1);
+  assertEqual(anteprima.nGiocatoriNuovi, 1); // resta Roberto Faraci
+  assertEqual(anteprima.nPrestazioni, 2);
+});
+
+test("partiteDaInserire + trovaGiocatoriNuovi + costruisciPrestazioni/Voti: round-trip completo", () => {
+  const anteprima = calcolaAnteprimaImport(r, [], []);
+  const daInserire = partiteDaInserire(r, anteprima.nuoveMatchIds);
+  assertEqual(daInserire.length, 1);
+
+  const nuoviGiocatori = trovaGiocatoriNuovi(r, []);
+  assertEqual(nuoviGiocatori.length, 2);
+
+  // simula gli id assegnati dal database dopo l'insert
+  const matchIdAId = { [daInserire[0].match_id]: 501 };
+  const fublesIdAId = {};
+  nuoviGiocatori.forEach((g, i) => { fublesIdAId[g.fubles_user_id] = 900 + i; });
+
+  const prestazioni = costruisciPrestazioni(r, anteprima.nuoveMatchIds, matchIdAId, fublesIdAId);
+  assertEqual(prestazioni.length, 2);
+  assert(prestazioni.every((p) => p.partita_id === 501), "tutte le prestazioni devono puntare alla partita appena creata");
+
+  const voti = costruisciVoti(r, anteprima.nuoveMatchIds, matchIdAId, fublesIdAId);
+  assertEqual(voti.length, 1);
+  assertEqual(voti[0].partita_id, 501);
+});
+
+test("costruisciPrestazioni: scarta le righe di un match che non è stato inserito (già esistente)", () => {
+  const nuoveMatchIds = new Set(); // nessun match nuovo, come se fosse già tutto presente
+  const prestazioni = costruisciPrestazioni(r, nuoveMatchIds, {}, {});
+  assertEqual(prestazioni.length, 0);
 });
 
 export const ok = riepilogo("importFubles.test.mjs");
