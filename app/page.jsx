@@ -461,10 +461,10 @@ function Consenso({ email, onAccettato }) {
 
   const accetta = async () => {
     setBusy(true); setErr("");
-    const { error } = await supabase.from("consensi").insert({
+    const { error } = await supabase.from("consensi").upsert({
       email: (email || "").toLowerCase(),
       versione: VERSIONE_PRIVACY,
-    });
+    }, { onConflict: "email" });
     setBusy(false);
     if (error) setErr(tradErroreDb(error.message)); else onAccettato();
   };
