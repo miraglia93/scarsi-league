@@ -14,6 +14,7 @@ import CopyButton from "../components/CopyButton";
 import PannelloGestioneLega from "../components/PannelloGestioneLega";
 import SpiegaXP from "../components/SpiegaXP";
 import Sondaggi from "../components/Sondaggi";
+import { inviaPush } from "../lib/push";
 
 /* ============================================================
    SCARSI LEAGUE — Next.js + Supabase (dati live)
@@ -407,7 +408,7 @@ function RichiediAccesso({ email }) {
       email: (email || "").toLowerCase(), nome, messaggio, lega_id: lega.id,
     });
     if (error) { setErr(tradErroreDb(error.message)); setStato("errore"); }
-    else setStato("inviata");
+    else { setStato("inviata"); inviaPush({ tipo: "richiesta_accesso", lega_id: lega.id, nome }); }
   };
 
   return (
@@ -455,7 +456,7 @@ function RichiediAccesso({ email }) {
   );
 }
 
-const VERSIONE_PRIVACY = "2026-11";
+const VERSIONE_PRIVACY = "2026-12";
 
 function Consenso({ email, onAccettato }) {
   const [ok, setOk] = useState(false);

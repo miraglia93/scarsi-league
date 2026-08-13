@@ -12,12 +12,17 @@ Visione completa in ROADMAP.md.
 
 ## Stack e deploy
 
-- **Next.js 14 (App Router)** — tutto client component (`"use client"`), niente API routes per ora
+- **Next.js 14 (App Router)** — quasi tutto client component (`"use client"`);
+  unica eccezione: `app/api/push/send/route.js` (route handler server-side,
+  necessaria per le push — richiede una chiave privata che non può stare nel
+  client). Nessun'altra API route per ora.
 - **Supabase**: Postgres + Auth (magic link; Google OAuth predisposto ma NON ancora configurato) + Storage (bucket `avatars`, pubblico)
 - **Vercel**: progetto `scarsi-league` — dominio principale **https://scarsileague.it** (custom), backup scarsi-league.vercel.app
 - Repo GitHub: `miraglia93/scarsi-league` — codice nella **radice** del repo (nessun Root Directory su Vercel)
 - Deploy: push su `main` → build automatica Vercel. NOTA: auto-assignment domini disattivato → a volte serve "Promote to Production" manuale
-- Env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (in Vercel e in `.env.local`)
+- Env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (client, in Vercel e in `.env.local`) ·
+  `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+  (per le push — le ultime due SOLO server-side, mai esporle al client, mai committarle)
 
 ## Struttura attuale (v0.7.1)
 

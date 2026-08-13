@@ -4,7 +4,7 @@ export default function Privacy() {
   return (
     <div className="wrap" style={{ maxWidth: 720 }}>
       <h1>Privacy <em>Policy</em></h1>
-      <p className="season">Scarsi League — versione 2026-11</p>
+      <p className="season">Scarsi League — versione 2026-12</p>
 
       <h2>Chi siamo</h2>
       <p>
@@ -33,6 +33,10 @@ export default function Privacy() {
         reazioni emoji, i voti nei sondaggi e i pronostici sulle
         partite in programma — tutti contenuti che scegli tu di
         pubblicare, visibili agli altri membri della tua lega.
+        <b>Se attivi le notifiche push</b>: un identificativo tecnico del tuo
+        browser/device, solo per potertele inviare — nessun dato di
+        localizzazione, nessuna pubblicità. Puoi disattivarle in qualsiasi
+        momento dal profilo o dalle impostazioni del browser.
       </p>
 
       <h2>Perché e per quanto</h2>

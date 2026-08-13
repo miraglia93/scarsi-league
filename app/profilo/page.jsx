@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { tradErroreDb } from "../../lib/engine";
 import AppNav from "../../components/AppNav";
+import PushSetup from "../../components/PushSetup";
 
 export default function Profilo() {
   const [stato, setStato] = useState("verifica"); // verifica | no-login | no-membro | ok
@@ -176,6 +177,7 @@ export default function Profilo() {
           </p>
         </>
       )}
+      <PushSetup email={me.email} />
       </div>
     </>
   );

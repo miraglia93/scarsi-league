@@ -79,6 +79,13 @@ Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
 Con questo, "v1.1 — La Piattaforma" è completa: nessuna voce rimasta
 aperta, il resto è nel parcheggio sotto.
 
+- **Notifiche push (§14)**: web push del browser (non email), primo pezzo di
+  codice server del progetto (`app/api/push/send`, VAPID) dato che spedire una
+  push richiede per forza una chiave privata lato server. Quattro eventi:
+  richiesta di accesso in attesa (a chi gestisce la lega), richiesta approvata
+  (a chi l'ha fatta), nuova partita importata (a tutti i membri), premio
+  assegnato (al giocatore). Attivabile dal profilo, per singolo device/browser.
+
 ## 🔮 Dopo (parcheggiate consapevolmente)
 
 - Pronostici sulle partite in programma (§17, terza gamba di Community)
@@ -92,7 +99,7 @@ aperta, il resto è nel parcheggio sotto.
   complessità per un uso che resterebbe marginale. Da riconsiderare
   solo se il flusso reale della lega cambiasse (es. squadre annunciate
   con giorni di anticipo).
-- Notifiche push/email, oltre a quelle in-app già fatte (§14)
+- Notifiche email (§14) — le push browser sono fatte, l'email resta parcheggiata
 - Import automatizzato senza intervento umano (§11 flusso futuro) —
   ⚠ NODO LEGALE: per uso commerciale/multi-lega serve accordo con Fubles
   (ToS + GDPR dati di terzi). Il bookmarklet velocizza il click umano, non

@@ -8,6 +8,7 @@ import {
   trovaGiocatoriNuovi, costruisciPrestazioni, costruisciVoti, parseImportRapido,
 } from "../lib/importFubles";
 import { bookmarkletHref } from "../lib/bookmarklet";
+import { inviaPush } from "../lib/push";
 import SubTabs from "./SubTabs";
 
 // tutta la gestione di UNA lega (import, accessi, stagioni, premi):
@@ -174,7 +175,10 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     setMsg("");
     const { data, error } = await supabase.rpc(fn, { p_email: email, p_lega_id: legaId });
     if (error || data !== "ok") setMsg("⚠ " + (error ? tradErroreDb(error.message) : data));
-    else setMsg("✅ Fatto");
+    else {
+      setMsg("✅ Fatto");
+      if (fn === "approva_richiesta") inviaPush({ tipo: "richiesta_approvata", lega_id: legaId, email });
+    }
     carica();
   };
 
@@ -261,6 +265,9 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
       });
 
       setImportMsg(`✅ Importate ${nuovePartite.length} partite, ${nuoviGiocatori.length} giocatori nuovi, ${nuovePrestazioni.length} prestazioni, ${nuoviVoti.length} voti.`);
+      if (nuovePartite.length) {
+        inviaPush({ tipo: "nuova_partita", lega_id: legaId, label: `${nuovePartite.length} nuove partite importate` });
+      }
       setImportPreview(null);
       setImportPartiteText(""); setImportPrestazioniText(""); setImportVotiText("");
       carica();
@@ -338,6 +345,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
       });
 
       setImportRapidoMsg(`✅ Importata: ${giocatoriNuovi.length} giocatori nuovi, ${prestazioniRighe.length} prestazioni, ${votiRighe.length} voti.`);
+      inviaPush({ tipo: "nuova_partita", lega_id: legaId, label: `${partita.squadra_1} ${partita.gol_squadra_1}-${partita.gol_squadra_2} ${partita.squadra_2}` });
       setImportRapidoPreview(null);
       setImportRapidoText("");
       carica();
@@ -398,6 +406,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     });
     if (error) { setPremioMsg("⚠ " + tradErroreDb(error.message)); return; }
     setPremioMsg("✅ Premio assegnato");
+    inviaPush({ tipo: "premio_assegnato", lega_id: legaId, giocatore_id: Number(premioGiocatore), etichetta: premioEtichetta });
     setPremioGiocatore(""); setPremioTipo(""); setPremioEtichetta(""); setPremioEmoji("");
     setPremioPartitaId(""); setPremioStagioneId("");
     carica();
