@@ -438,8 +438,12 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     setEliminaTesto("");
   };
 
+  // per la lega si digita il nome esatto (non basta "ELIMINA"): è l'operazione
+  // più catastrofica del pannello, cascata su tutto senza cestino
+  const testoRichiesto = (t) => (t?.tipo === "lega" ? t.label : "ELIMINA");
+
   const confermaElimina = async () => {
-    if (!eliminaTarget || eliminaTesto !== "ELIMINA") return;
+    if (!eliminaTarget || eliminaTesto !== testoRichiesto(eliminaTarget)) return;
     setEliminaBusy(true);
 
     if (eliminaTarget.tipo === "lega") {
@@ -931,7 +935,8 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
               <p>
                 Stai per eliminare <b>tutta la lega {eliminaTarget.label}</b>: giocatori, membri,
                 partite, voti, premi e stagioni collegati. Se vuoi tenerne una copia, esporta i
-                dati prima di confermare. L&apos;operazione non è reversibile.
+                dati prima di confermare. L&apos;operazione non è reversibile — nessun cestino,
+                nessun ripristino.
               </p>
             ) : (
               <p>
@@ -939,11 +944,15 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                 collegate, quindi non verrà eliminato altro. L&apos;operazione non è reversibile.
               </p>
             )}
-            <p className="season">Digita <b>ELIMINA</b> per confermare</p>
+            <p className="season">
+              {eliminaTarget.tipo === "lega"
+                ? <>Digita il nome esatto della lega, <b>{eliminaTarget.label}</b>, per confermare</>
+                : <>Digita <b>ELIMINA</b> per confermare</>}
+            </p>
             <input type="text" value={eliminaTesto} onChange={(e) => setEliminaTesto(e.target.value)}
-              placeholder="ELIMINA" autoFocus />
+              placeholder={testoRichiesto(eliminaTarget)} autoFocus />
             <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-              <button className="mini no" disabled={eliminaTesto !== "ELIMINA" || eliminaBusy} onClick={confermaElimina}>
+              <button className="mini no" disabled={eliminaTesto !== testoRichiesto(eliminaTarget) || eliminaBusy} onClick={confermaElimina}>
                 {eliminaBusy ? "Eliminazione…" : "Elimina definitivamente"}
               </button>
               <button className="mini" onClick={() => setEliminaTarget(null)}>Annulla</button>
