@@ -13,6 +13,7 @@ import { IconEdit, IconLock, IconLogout } from "../components/icons";
 import CopyButton from "../components/CopyButton";
 import PannelloGestioneLega from "../components/PannelloGestioneLega";
 import SpiegaXP from "../components/SpiegaXP";
+import Sondaggi from "../components/Sondaggi";
 
 /* ============================================================
    SCARSI LEAGUE — Next.js + Supabase (dati live)
@@ -572,7 +573,7 @@ export default function Home() {
     const sez = params.get("sezione");
     if (sez && SEZIONI_VALIDE.includes(sez)) setSezione(sez);
     const sub = params.get("sub");
-    if (sub === "totw" && sez === "lega") setLegaSub("totw");
+    if (["totw", "sondaggi"].includes(sub) && sez === "lega") setLegaSub(sub);
     if (sez === "classifiche" && ["generale", "specialita", "record"].includes(sub)) setClassificheSub(sub);
   }, []);
 
@@ -942,6 +943,7 @@ export default function Home() {
           <>
             <SubTabs active={legaSub} onSelect={scegliLegaSub} tabs={[
               { key: "panoramica", label: "Panoramica" },
+              { key: "sondaggi", label: "Sondaggi" },
               { key: "totw", label: "Team of the Week" },
               { key: "hof", label: "Hall of Fame", href: "/hall-of-fame" },
               ...(ruoloUtente === "admin" || ruoloUtente === "coorganizzatore" ? [{ key: "gestione", label: "⚙ Gestione" }] : []),
@@ -949,6 +951,10 @@ export default function Home() {
 
             {legaSub === "gestione" && (ruoloUtente === "admin" || ruoloUtente === "coorganizzatore") && (
               <PannelloGestioneLega legaId={legaId} ruoloUtente={ruoloUtente} />
+            )}
+
+            {legaSub === "sondaggi" && (
+              <Sondaggi legaId={legaId} mioEmail={(session.user?.email || "").toLowerCase()} />
             )}
 
             {legaSub === "panoramica" && (

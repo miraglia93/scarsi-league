@@ -16,7 +16,8 @@ import SubTabs from "./SubTabs";
 // quello scelto dal selettore in alto — qui non si cambia lega.
 export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const isAdmin = ruoloUtente === "admin";
-  const [sezioneAdmin, setSezioneAdmin] = useState("partite"); // partite | accessi | struttura | premi
+  const [sezioneAdmin, setSezioneAdmin] = useState("partite"); // partite | accessi | struttura | premi | squadra | sondaggi
+  const [mioEmail, setMioEmail] = useState("");
   const [legaCorrente, setLegaCorrente] = useState(null);
   const [richieste, setRichieste] = useState([]);
   const [membri, setMembri] = useState([]);
@@ -57,6 +58,15 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const [datiOrg, setDatiOrg] = useState([]); // righe di dati_organizzativi, una per giocatore al massimo
   const [squadraMsg, setSquadraMsg] = useState("");
 
+  // ---------- sondaggi ----------
+  const [sondaggiList, setSondaggiList] = useState([]);
+  const [opzioniSondaggio, setOpzioniSondaggio] = useState([]);
+  const [votiSondaggio, setVotiSondaggio] = useState([]);
+  const [sondaggioDomanda, setSondaggioDomanda] = useState("");
+  const [sondaggioOpzioni, setSondaggioOpzioni] = useState(["", ""]);
+  const [sondaggioMsg, setSondaggioMsg] = useState("");
+  const [sondaggioBusy, setSondaggioBusy] = useState(false);
+
   // ---------- premi ----------
   const [premioGiocatore, setPremioGiocatore] = useState("");
   const [premioTipo, setPremioTipo] = useState("");
@@ -83,7 +93,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
 
   const carica = async () => {
     if (legaId == null) return;
-    const [le, r, m, pa, gi, st, pr, prc, dorg] = await Promise.all([
+    const [le, r, m, pa, gi, st, pr, prc, dorg, so] = await Promise.all([
       supabase.from("leghe").select("*").eq("id", legaId).maybeSingle(),
       supabase.from("richieste_accesso").select("*").eq("lega_id", legaId).order("richiesta_il", { ascending: false }),
       supabase.from("membri_autorizzati").select("*").eq("lega_id", legaId).order("aggiunto_il"),
@@ -93,6 +103,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
       supabase.from("premi").select("*").eq("lega_id", legaId).order("assegnato_il", { ascending: false }),
       supabase.from("prestazioni").select("partita_id"),
       supabase.from("dati_organizzativi").select("*").eq("lega_id", legaId),
+      supabase.from("sondaggi").select("*").eq("lega_id", legaId).order("creato_il", { ascending: false }),
     ]);
     setLegaCorrente(le.data || null);
     setRichieste(r.data || []);
@@ -102,12 +113,28 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     setStagioni(st.data || []);
     setPremiList(pr.data || []);
     setDatiOrg(dorg.data || []);
+    setSondaggiList(so.data || []);
+    const sondaggioIds = (so.data || []).map((s) => s.id);
+    if (sondaggioIds.length) {
+      const [{ data: o }, { data: v }] = await Promise.all([
+        supabase.from("opzioni_sondaggio").select("*").in("sondaggio_id", sondaggioIds),
+        supabase.from("voti_sondaggio").select("*").in("sondaggio_id", sondaggioIds),
+      ]);
+      setOpzioniSondaggio(o || []);
+      setVotiSondaggio(v || []);
+    } else {
+      setOpzioniSondaggio([]); setVotiSondaggio([]);
+    }
     const conteggio = {};
     (prc.data || []).forEach((row) => { conteggio[row.partita_id] = (conteggio[row.partita_id] || 0) + 1; });
     setPrestazioniConteggio(conteggio);
   };
 
   useEffect(() => { carica(); }, [legaId]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setMioEmail((session?.user?.email || "").toLowerCase()));
+  }, []);
 
   useEffect(() => {
     if (legaCorrente) { setInfoStruttura(legaCorrente.struttura || ""); setInfoOrario(legaCorrente.orario || ""); }
@@ -383,6 +410,50 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     carica();
   };
 
+  // ---------- sondaggi ----------
+  const modificaOpzioneSondaggio = (i, valore) => {
+    setSondaggioOpzioni((op) => op.map((o, idx) => (idx === i ? valore : o)));
+  };
+
+  const aggiungiOpzioneSondaggio = () => setSondaggioOpzioni((op) => [...op, ""]);
+
+  const rimuoviOpzioneSondaggio = (i) => setSondaggioOpzioni((op) => op.filter((_, idx) => idx !== i));
+
+  const creaSondaggio = async () => {
+    setSondaggioMsg("");
+    const opzioniValide = sondaggioOpzioni.map((o) => o.trim()).filter(Boolean);
+    if (!sondaggioDomanda.trim() || opzioniValide.length < 2) {
+      setSondaggioMsg("⚠ Compila la domanda e almeno due opzioni.");
+      return;
+    }
+    setSondaggioBusy(true);
+    const { data: s, error } = await supabase.from("sondaggi").insert({
+      lega_id: legaId, domanda: sondaggioDomanda.trim(), creato_da_email: mioEmail,
+    }).select("id").single();
+    if (error) { setSondaggioBusy(false); setSondaggioMsg("⚠ " + tradErroreDb(error.message)); return; }
+    const { error: errO } = await supabase.from("opzioni_sondaggio").insert(
+      opzioniValide.map((testo) => ({ sondaggio_id: s.id, testo }))
+    );
+    setSondaggioBusy(false);
+    if (errO) { setSondaggioMsg("⚠ " + tradErroreDb(errO.message)); return; }
+    setSondaggioMsg("✅ Sondaggio creato");
+    setSondaggioDomanda(""); setSondaggioOpzioni(["", ""]);
+    carica();
+  };
+
+  const chiudiSondaggio = async (id) => {
+    const { error } = await supabase.from("sondaggi").update({ stato: "chiuso" }).eq("id", id);
+    setSondaggioMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Sondaggio chiuso");
+    carica();
+  };
+
+  const eliminaSondaggio = async (id) => {
+    if (!confirm("Eliminare questo sondaggio e tutti i suoi voti?")) return;
+    const { error } = await supabase.from("sondaggi").delete().eq("id", id);
+    setSondaggioMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Sondaggio eliminato");
+    carica();
+  };
+
   // ---------- gestione partite ----------
   const spostaPartita = async (partitaId, nuovaStagioneId) => {
     setSpostaBusy(partitaId); setMsg("");
@@ -535,6 +606,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
         { key: "struttura", label: "Lega" },
         { key: "premi", label: "Premi" },
         { key: "squadra", label: "Squadra" },
+        { key: "sondaggi", label: "Sondaggi" },
       ]} />
 
       {sezioneAdmin === "partite" && (
@@ -977,6 +1049,59 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                         <td>
                           <input placeholder="Note interne…" defaultValue={d.note || ""}
                             onBlur={(e) => { if (e.target.value !== (d.note || "")) salvaDatoOrg(g.id, "note", e.target.value || null); }} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {sezioneAdmin === "sondaggi" && (
+        <>
+          <h2>Sondaggi</h2>
+          <div className="betaform">
+            <h3>Crea un sondaggio</h3>
+            <input placeholder="Domanda — es. Dove ceniamo dopo la finale?" value={sondaggioDomanda}
+              onChange={(e) => setSondaggioDomanda(e.target.value)} />
+            {sondaggioOpzioni.map((o, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input placeholder={`Opzione ${i + 1}`} value={o}
+                  onChange={(e) => modificaOpzioneSondaggio(i, e.target.value)} style={{ flex: 1 }} />
+                {sondaggioOpzioni.length > 2 && (
+                  <button type="button" className="mini no" onClick={() => rimuoviOpzioneSondaggio(i)}>✕</button>
+                )}
+              </div>
+            ))}
+            <button type="button" className="mini" style={{ marginTop: 6 }} onClick={aggiungiOpzioneSondaggio}>+ Aggiungi opzione</button>
+            <button className="mini ok" style={{ marginTop: 10 }} onClick={creaSondaggio} disabled={sondaggioBusy}>
+              {sondaggioBusy ? "Creazione…" : "+ Crea sondaggio"}
+            </button>
+            {sondaggioMsg && <div className="note">{sondaggioMsg}</div>}
+          </div>
+
+          <h3 style={{ marginTop: 24 }}>Sondaggi ({sondaggiList.length})</h3>
+          {sondaggiList.length === 0 ? (
+            <p className="season">Nessun sondaggio creato ancora.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead><tr><th>Domanda</th><th>Stato</th><th className="num">Voti</th><th>Quando</th><th>Azioni</th></tr></thead>
+                <tbody>
+                  {sondaggiList.map((s) => {
+                    const nVoti = votiSondaggio.filter((v) => v.sondaggio_id === s.id).length;
+                    return (
+                      <tr key={s.id}>
+                        <td className="pname">{s.domanda}</td>
+                        <td>{s.stato === "aperto" ? "🟢 aperto" : "chiuso"}</td>
+                        <td className="num">{nVoti}</td>
+                        <td>{new Date(s.creato_il).toLocaleDateString("it-IT")}</td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          {s.stato === "aperto" && <button className="mini" onClick={() => chiudiSondaggio(s.id)}>Chiudi</button>}{" "}
+                          <button className="mini no" onClick={() => eliminaSondaggio(s.id)}>Elimina</button>
                         </td>
                       </tr>
                     );

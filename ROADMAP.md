@@ -77,10 +77,10 @@ aperta, il resto è nel parcheggio sotto.
 ## 🔮 Dopo (parcheggiate consapevolmente)
 
 - Community (§17) — **in corso**: FASE A (commenti + reazioni emoji su
-  ogni partita, v1.16.0) spedita. Restano FASE B (sondaggi) e FASE C
-  (pronostici sulle partite in programma — richiede una tabella nuova
-  per partite non ancora giocate, `partite` oggi rappresenta solo
-  partite disputate).
+  ogni partita, v1.16.0) e FASE B (sondaggi per lega, scelta singola,
+  creati dal gestore, v1.17.0) spedite. Resta FASE C (pronostici sulle
+  partite in programma — richiede una tabella nuova per partite non
+  ancora giocate, `partite` oggi rappresenta solo partite disputate).
 - Notifiche push/email, oltre a quelle in-app già fatte (§14)
 - Import automatizzato senza intervento umano (§11 flusso futuro) —
   ⚠ NODO LEGALE: per uso commerciale/multi-lega serve accordo con Fubles
