@@ -70,17 +70,28 @@ Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
   restare vuoti i premi Classifica/Miglior media — non è un bug, è la
   stessa soglia usata ovunque, ma vale la pena saperlo prima di
   organizzare un evento di una sola partita
+- **Community (§17)**: commenti + reazioni emoji su ogni partita
+  (v1.16.0) · sondaggi per lega, scelta singola, creati dal gestore
+  (v1.17.0). La terza gamba prevista (pronostici sulle partite in
+  programma) è stata **accantonata consapevolmente**, non solo rimandata
+  — vedi sotto.
 
 Con questo, "v1.1 — La Piattaforma" è completa: nessuna voce rimasta
 aperta, il resto è nel parcheggio sotto.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 
-- Community (§17) — **in corso**: FASE A (commenti + reazioni emoji su
-  ogni partita, v1.16.0) e FASE B (sondaggi per lega, scelta singola,
-  creati dal gestore, v1.17.0) spedite. Resta FASE C (pronostici sulle
-  partite in programma — richiede una tabella nuova per partite non
-  ancora giocate, `partite` oggi rappresenta solo partite disputate).
+- Pronostici sulle partite in programma (§17, terza gamba di Community)
+  — **valutata e scartata**, non solo rimandata: tutto il resto della
+  piattaforma (import, voti, statistiche, persino i sondaggi) funziona
+  a posteriori via Fubles, sempre dopo che la partita è stata giocata.
+  I pronostici per natura richiedono l'opposto — squadre note e un
+  utente che si esprime PRIMA — il che avrebbe richiesto una tabella e
+  un flusso apposta (`partite_programmate`) per un momento che nella
+  pratica di questa lega non esiste mai in modo affidabile. Non vale la
+  complessità per un uso che resterebbe marginale. Da riconsiderare
+  solo se il flusso reale della lega cambiasse (es. squadre annunciate
+  con giorni di anticipo).
 - Notifiche push/email, oltre a quelle in-app già fatte (§14)
 - Import automatizzato senza intervento umano (§11 flusso futuro) —
   ⚠ NODO LEGALE: per uso commerciale/multi-lega serve accordo con Fubles
