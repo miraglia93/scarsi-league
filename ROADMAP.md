@@ -3,7 +3,7 @@
 Derivata dal documento di visione (19 sezioni). Priorità decise con Alessandro.
 Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
 
-## ✅ Già fatto (v0.1 → v1.0.0)
+## ✅ Già fatto (v0.1 → v1.14.1)
 
 - Home lega: hero ultima partita, statistiche, classifica generale con forma,
   AI insight (§1 in parte)
@@ -40,28 +40,43 @@ Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
   riserva, Google disattivabile con una riga · errori tradotti in
   italiano ovunque, stati vuoti gestiti con eleganza, meta/OpenGraph e
   favicon a tema
+- **v1.1 → v1.14 "La Piattaforma" (parziale)**: multi-tenancy vera con RLS
+  per-lega (isolamento dati tra leghe, non solo whitelist) · wizard "Crea la
+  tua lega" con inviti, QR code, pannello abbonamenti super-admin (§18) ·
+  ruoli organizzatore/coorganizzatore oltre ad admin/membro (§19) ·
+  switcher multi-lega, hub cross-lega in home, `/leghe` pubblica, `/bacheca`
+  con statistiche aggregate cross-lega · notifiche in-app (richieste,
+  approvazioni, partite, premi) — solo in-app, non push/email (§14 in
+  parte) · import rapido da singola partita via bookmarklet trascinabile,
+  più veloce del copia-incolla manuale ma sempre "un click umano per
+  partita" (§11, nodo legale invariato — vedi sotto) · pannello admin
+  ristrutturato a schede, tabelle mobile-friendly · cancellazione lega con
+  conferma nome esatto + backup interno automatico (pg_cron, 14 notti) dopo
+  un incidente di dati reale
 
-## v1.1 — "La Piattaforma"
+## v1.1 — "La Piattaforma" (resto ancora aperto)
 
 - Dashboard organizzatore completa: affidabilità giocatori (dato privato),
   no-show, note interne (§10) — ⚠ NIENTE gestione pagamenti reali per ora:
   solo flag pagato/non pagato manuale, nessun movimento di denaro
-- Wizard "Crea la tua lega" completo con inviti (§18)
-- Ruoli: organizzatore/collaboratore oltre ad admin/membro (§19)
 - Eventi speciali: Christmas Cup, tornei con classifiche separate (§15)
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 
 - Community: commenti, sondaggi, pronostici (§17)
-- Notifiche push/email (§14)
+- Notifiche push/email, oltre a quelle in-app già fatte (§14)
 - Import automatizzato senza intervento umano (§11 flusso futuro) —
   ⚠ NODO LEGALE: per uso commerciale/multi-lega serve accordo con Fubles
-  (ToS + GDPR dati di terzi). Per ora l'import resta manuale via Claude
-  in Chrome per la propria lega. Alternativa se si apre a terzi:
-  inserimento risultati da parte degli organizzatori.
+  (ToS + GDPR dati di terzi). Il bookmarklet velocizza il click umano, non
+  lo elimina. Per ora l'import resta comunque azionato da una persona, per
+  la propria lega. Alternativa se si apre a terzi: inserimento risultati
+  da parte degli organizzatori.
 - App mobile nativa
 - Penalità XP per no-show/pagamenti (§6) — sensibile, deciderà Alessandro
   se e come, meglio evitare gogna pubblica automatica
+- Backup gestiti veri (piano Supabase Pro o export periodico fuori dal
+  DB) — il backup interno attuale (pg_cron) copre solo l'errore umano più
+  probabile (una lega cancellata per sbaglio), non un disastro sul database
 
 ## Note di prodotto
 
