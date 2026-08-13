@@ -3,7 +3,7 @@
 Derivata dal documento di visione (19 sezioni). Priorità decise con Alessandro.
 Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
 
-## ✅ Già fatto (v0.1 → v1.15.0)
+## ✅ Già fatto (v0.1 → v1.15.1)
 
 - Home lega: hero ultima partita, statistiche, classifica generale con forma,
   AI insight (§1 in parte)
@@ -57,10 +57,22 @@ Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
   dati privati per giocatore — affidabilità (1-5), conteggio no-show, note
   libere — visibili solo a chi gestisce la lega, mai ai membri (§10 in
   parte, senza pagamenti: quelli restano parcheggiati)
+- **Eventi speciali (§15)**: risultava "da fare" ma era già praticamente
+  possibile con il meccanismo `stagioni` esistente — creare una stagione
+  chiamata "Christmas Cup", spostarci le partite dalla tabella Partite,
+  e il selettore stagione dà da solo una classifica generale, marcatori,
+  media voto, MVP e Hall of Fame completamente separati (`assemble()`/
+  `buildStats()` in `lib/engine.js` sono funzioni pure sui match passati,
+  nessuna fuga dalla stagione principale). L'unico vero buco trovato:
+  i premi assegnati dall'admin non erano filtrati per stagione sulla
+  card giocatore — corretto in v1.15.1. Nota per un torneo molto corto
+  (1 partita a giocatore): la soglia "presenze ≥ 2" della Hall of Fame fa
+  restare vuoti i premi Classifica/Miglior media — non è un bug, è la
+  stessa soglia usata ovunque, ma vale la pena saperlo prima di
+  organizzare un evento di una sola partita
 
-## v1.1 — "La Piattaforma" (resto ancora aperto)
-
-- Eventi speciali: Christmas Cup, tornei con classifiche separate (§15)
+Con questo, "v1.1 — La Piattaforma" è completa: nessuna voce rimasta
+aperta, il resto è nel parcheggio sotto.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 

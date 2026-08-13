@@ -726,7 +726,11 @@ export default function Home() {
     const pr = raw.pr.filter((p) => paIds.has(p.partita_id));
     const vo = raw.vo.filter((v) => paIds.has(v.partita_id));
     const dm = raw.dm.filter((d) => paIds.has(d.partita_id));
-    const premi = raw.premi.filter((p) => p.lega_id === legaId);
+    // i premi "partita" hanno solo partita_id (stagione_id null): risolti tramite paIds,
+    // stesso set già usato per prestazioni/voti/dati_manuali qui sopra
+    const premi = raw.premi.filter((p) => p.lega_id === legaId && (
+      stagioneSel === "all" || p.stagione_id === stagioneSel || (p.partita_id != null && paIds.has(p.partita_id))
+    ));
     if (!pa.length) return { P: {}, matches: [], votes: [], dm: [], premi: [], vuota: true };
     return { ...assemble(pa, giocatoriLega, pr, vo), dm, premi };
   }, [raw, legaId, stagioneSel, giocatoriLega]);
