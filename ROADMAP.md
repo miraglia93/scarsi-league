@@ -3,7 +3,7 @@
 Derivata dal documento di visione (19 sezioni). Priorità decise con Alessandro.
 Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
 
-## ✅ Già fatto (v0.1 → v1.14.1)
+## ✅ Già fatto (v0.1 → v1.15.0)
 
 - Home lega: hero ultima partita, statistiche, classifica generale con forma,
   AI insight (§1 in parte)
@@ -53,12 +53,13 @@ Regola: un rilascio piccolo e funzionante batte tre rilasci a metà.
   ristrutturato a schede, tabelle mobile-friendly · cancellazione lega con
   conferma nome esatto + backup interno automatico (pg_cron, 14 notti) dopo
   un incidente di dati reale
+- **v1.15 "Dashboard organizzatore"**: tab "Squadra" nel pannello admin con
+  dati privati per giocatore — affidabilità (1-5), conteggio no-show, note
+  libere — visibili solo a chi gestisce la lega, mai ai membri (§10 in
+  parte, senza pagamenti: quelli restano parcheggiati)
 
 ## v1.1 — "La Piattaforma" (resto ancora aperto)
 
-- Dashboard organizzatore completa: affidabilità giocatori (dato privato),
-  no-show, note interne (§10) — ⚠ NIENTE gestione pagamenti reali per ora:
-  solo flag pagato/non pagato manuale, nessun movimento di denaro
 - Eventi speciali: Christmas Cup, tornei con classifiche separate (§15)
 
 ## 🔮 Dopo (parcheggiate consapevolmente)

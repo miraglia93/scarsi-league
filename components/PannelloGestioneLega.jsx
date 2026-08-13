@@ -53,6 +53,10 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const [eliminaTesto, setEliminaTesto] = useState("");
   const [eliminaBusy, setEliminaBusy] = useState(false);
 
+  // ---------- squadra (dati organizzativi privati: affidabilità, no-show, note) ----------
+  const [datiOrg, setDatiOrg] = useState([]); // righe di dati_organizzativi, una per giocatore al massimo
+  const [squadraMsg, setSquadraMsg] = useState("");
+
   // ---------- premi ----------
   const [premioGiocatore, setPremioGiocatore] = useState("");
   const [premioTipo, setPremioTipo] = useState("");
@@ -79,7 +83,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
 
   const carica = async () => {
     if (legaId == null) return;
-    const [le, r, m, pa, gi, st, pr, prc] = await Promise.all([
+    const [le, r, m, pa, gi, st, pr, prc, dorg] = await Promise.all([
       supabase.from("leghe").select("*").eq("id", legaId).maybeSingle(),
       supabase.from("richieste_accesso").select("*").eq("lega_id", legaId).order("richiesta_il", { ascending: false }),
       supabase.from("membri_autorizzati").select("*").eq("lega_id", legaId).order("aggiunto_il"),
@@ -88,6 +92,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
       supabase.from("stagioni").select("*").eq("lega_id", legaId).order("inizio", { ascending: false }),
       supabase.from("premi").select("*").eq("lega_id", legaId).order("assegnato_il", { ascending: false }),
       supabase.from("prestazioni").select("partita_id"),
+      supabase.from("dati_organizzativi").select("*").eq("lega_id", legaId),
     ]);
     setLegaCorrente(le.data || null);
     setRichieste(r.data || []);
@@ -96,6 +101,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     setGiocatori(gi.data || []);
     setStagioni(st.data || []);
     setPremiList(pr.data || []);
+    setDatiOrg(dorg.data || []);
     const conteggio = {};
     (prc.data || []).forEach((row) => { conteggio[row.partita_id] = (conteggio[row.partita_id] || 0) + 1; });
     setPrestazioniConteggio(conteggio);
@@ -335,6 +341,18 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     setDatiMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Dati salvati");
   };
 
+  const datoOrgDi = (giocatoreId) => datiOrg.find((d) => d.giocatore_id === giocatoreId) || {};
+
+  const salvaDatoOrg = async (giocatoreId, campo, valore) => {
+    setSquadraMsg("");
+    const { error } = await supabase.from("dati_organizzativi").upsert(
+      { giocatore_id: giocatoreId, lega_id: legaId, [campo]: valore, aggiornato_il: new Date().toISOString() },
+      { onConflict: "giocatore_id" }
+    );
+    if (error) { setSquadraMsg("⚠ " + tradErroreDb(error.message)); return; }
+    carica();
+  };
+
   const assegnaPremio = async () => {
     setPremioMsg("");
     if (!premioGiocatore || !premioTipo || !premioEtichetta) {
@@ -516,6 +534,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
         { key: "accessi", label: `Accessi${inAttesa.length ? ` (${inAttesa.length})` : ""}` },
         { key: "struttura", label: "Lega" },
         { key: "premi", label: "Premi" },
+        { key: "squadra", label: "Squadra" },
       ]} />
 
       {sezioneAdmin === "partite" && (
@@ -911,6 +930,54 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                         <td>{p.periodo || "—"}</td>
                         <td>{new Date(p.assegnato_il).toLocaleDateString("it-IT")}</td>
                         <td><button className="mini no" onClick={() => rimuoviPremio(p.id)}>Rimuovi</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {sezioneAdmin === "squadra" && (
+        <>
+          <h2>Squadra</h2>
+          <p className="season">
+            Dati privati, visibili solo a chi gestisce la lega — non compaiono da nessuna parte
+            per gli altri membri: affidabilità nel presentarsi, quante volte ha dato buca, note libere.
+          </p>
+          {squadraMsg && <div className="note">{squadraMsg}</div>}
+          {giocatori.length === 0 ? (
+            <p className="season">Nessun giocatore ancora.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead><tr><th>Giocatore</th><th>Affidabilità</th><th>No-show</th><th>Note</th></tr></thead>
+                <tbody>
+                  {giocatori.map((g) => {
+                    const d = datoOrgDi(g.id);
+                    const noShow = d.no_show_count || 0;
+                    return (
+                      <tr key={g.id}>
+                        <td className="pname">{g.nickname || g.nome}</td>
+                        <td>
+                          <select value={d.affidabilita || ""} onChange={(e) => salvaDatoOrg(g.id, "affidabilita", e.target.value ? Number(e.target.value) : null)}>
+                            <option value="">—</option>
+                            {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+                          </select>
+                        </td>
+                        <td>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                            <button className="mini no" disabled={noShow === 0} onClick={() => salvaDatoOrg(g.id, "no_show_count", noShow - 1)}>-1</button>
+                            <b>{noShow}</b>
+                            <button className="mini ok" onClick={() => salvaDatoOrg(g.id, "no_show_count", noShow + 1)}>+1</button>
+                          </span>
+                        </td>
+                        <td>
+                          <input placeholder="Note interne…" defaultValue={d.note || ""}
+                            onBlur={(e) => { if (e.target.value !== (d.note || "")) salvaDatoOrg(g.id, "note", e.target.value || null); }} />
+                        </td>
                       </tr>
                     );
                   })}
