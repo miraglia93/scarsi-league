@@ -48,8 +48,11 @@ RPC (security definer): `is_admin()`, `claim_giocatore(gid)`,
 
 Migrazioni finora eseguite a mano nell'SQL Editor (file: schema.sql,
 seed_test5.sql, whitelist.sql, richieste_accesso.sql, consensi.sql,
-v07_piattaforma.sql). D'ora in poi: creare file numerati in `migrations/`
-e NON modificare i vecchi.
+v07_piattaforma.sql). `schema.sql` e `seed_test5.sql` recuperati e
+archiviati in `migrations/legacy/` il 13/08/2026 (erano ancora salvati
+nella sidebar dell'SQL Editor di Supabase); gli altri quattro restano
+persi. D'ora in poi: creare file numerati in `migrations/` e NON
+modificare i vecchi.
 
 ## ⚠ Trappole già incontrate (non ripeterle)
 
