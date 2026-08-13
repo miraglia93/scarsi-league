@@ -454,7 +454,7 @@ function RichiediAccesso({ email }) {
   );
 }
 
-const VERSIONE_PRIVACY = "2026-10";
+const VERSIONE_PRIVACY = "2026-11";
 
 function Consenso({ email, onAccettato }) {
   const [ok, setOk] = useState(false);

@@ -4,7 +4,7 @@ export default function Privacy() {
   return (
     <div className="wrap" style={{ maxWidth: 720 }}>
       <h1>Privacy <em>Policy</em></h1>
-      <p className="season">Scarsi League — versione 2026-10</p>
+      <p className="season">Scarsi League — versione 2026-11</p>
 
       <h2>Chi siamo</h2>
       <p>
@@ -28,7 +28,11 @@ export default function Privacy() {
         leghe restano gli stessi ovunque. <b>Come giocatore</b>: nome
         visualizzato su Fubles, ruolo, presenze, risultati, gol, voti
         delle pagelle e premi, importati dalle pagine pubbliche delle
-        partite su Fubles a cui hai partecipato.
+        partite su Fubles a cui hai partecipato. <b>Se partecipi alla
+        community</b>: i commenti che scrivi sotto le partite, le
+        reazioni emoji, i voti nei sondaggi e i pronostici sulle
+        partite in programma — tutti contenuti che scegli tu di
+        pubblicare, visibili agli altri membri della tua lega.
       </p>
 
       <h2>Perché e per quanto</h2>
@@ -44,8 +48,12 @@ export default function Privacy() {
       <p>
         Solo i membri della tua lega, approvati dal suo organizzatore. Le
         leghe sono isolate tra loro: chi gioca in una lega non vede i dati
-        di un&apos;altra. Il sito non è indicizzato dai motori di ricerca. I dati
-        sono ospitati su Supabase (server in UE) e Vercel.
+        di un&apos;altra. Commenti, reazioni, voti nei sondaggi e pronostici
+        sono visibili a tutti i membri della lega in cui li pubblichi;
+        puoi sempre eliminare un tuo commento, l&apos;organizzatore può
+        eliminare qualsiasi contenuto. Il sito non è indicizzato dai
+        motori di ricerca. I dati sono ospitati su Supabase (server in
+        UE) e Vercel.
       </p>
 
       <h2>I tuoi diritti</h2>

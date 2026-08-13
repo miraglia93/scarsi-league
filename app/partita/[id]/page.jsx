@@ -7,6 +7,8 @@ import { fmtData, iniziali, tradErroreDb, applicaNomiRegistrati } from "../../..
 import AppNav from "../../../components/AppNav";
 import CopyButton from "../../../components/CopyButton";
 import RecapImageButton from "../../../components/RecapImageButton";
+import SubTabs from "../../../components/SubTabs";
+import CommentiPartita from "../../../components/CommentiPartita";
 
 function RigaFormazione({ p }) {
   return (
@@ -64,6 +66,9 @@ export default function Partita() {
   const [leader, setLeader] = useState(null);
   const [premiPartita, setPremiPartita] = useState([]);
   const [errore, setErrore] = useState("");
+  const [tab, setTab] = useState("formazioni");
+  const [mioEmail, setMioEmail] = useState("");
+  const [sonoGestore, setSonoGestore] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -74,8 +79,10 @@ export default function Partita() {
       const { data: c } = await supabase.from("consensi").select("email").eq("email", mail).maybeSingle();
       if (!c) { setStato("no-consenso"); return; }
 
-      const { data: me } = await supabase.from("membri_autorizzati").select("email").eq("email", mail);
+      const { data: me } = await supabase.from("membri_autorizzati").select("email, ruolo").eq("email", mail);
       if (!me || !me.length) { setStato("no-membro"); return; }
+      setMioEmail(mail);
+      setSonoGestore(me[0].ruolo === "admin" || me[0].ruolo === "coorganizzatore");
 
       const { data: p, error: pErr } = await supabase.from("partite").select("*").eq("id", id).maybeSingle();
       if (pErr) { setErrore(tradErroreDb(pErr.message)); setStato("errore"); return; }
@@ -244,17 +251,30 @@ export default function Partita() {
         <div className="note">⚠ Marcatori attribuiti su Fubles: {golAttribuiti} gol su {totGol} totali — parziali.</div>
       )}
 
-      <h2>Formazioni</h2>
-      <div className="formations">
-        {squadre.map((nome) => (
-          <div key={nome} className="formteam">
-            <h3>{nome}</h3>
-            {perSquadra(nome).length === 0
-              ? <p className="season">Nessun dato disponibile</p>
-              : perSquadra(nome).map((r) => <RigaFormazione key={r.giocatore_id} p={r} />)}
+      <SubTabs active={tab} onSelect={setTab} tabs={[
+        { key: "formazioni", label: "Formazioni" },
+        { key: "commenti", label: "Commenti" },
+      ]} />
+
+      {tab === "formazioni" && (
+        <>
+          <h2>Formazioni</h2>
+          <div className="formations">
+            {squadre.map((nome) => (
+              <div key={nome} className="formteam">
+                <h3>{nome}</h3>
+                {perSquadra(nome).length === 0
+                  ? <p className="season">Nessun dato disponibile</p>
+                  : perSquadra(nome).map((r) => <RigaFormazione key={r.giocatore_id} p={r} />)}
+              </div>
+            ))}
           </div>
-        ))}
-        </div>
+        </>
+      )}
+
+      {tab === "commenti" && (
+        <CommentiPartita partitaId={id} legaId={partita.lega_id} mioEmail={mioEmail} sonoGestore={sonoGestore} />
+      )}
       </div>
     </>
   );
