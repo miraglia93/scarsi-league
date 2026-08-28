@@ -42,6 +42,9 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
 
   // ---------- gestione partite ----------
   const [spostaBusy, setSpostaBusy] = useState(null); // id partita in corso di spostamento
+  const [modificaPartitaId, setModificaPartitaId] = useState(null);
+  const [modificaCampi, setModificaCampi] = useState({});
+  const [modificaBusy, setModificaBusy] = useState(false);
 
   // ---------- gestione stagioni ----------
   const [stagioneModifiche, setStagioneModifiche] = useState({}); // id -> { nome, fine }
@@ -474,6 +477,29 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     carica();
   };
 
+  const apriModificaPartita = (p) => {
+    setModificaPartitaId(p.id);
+    setModificaCampi({
+      data: p.data, squadra_1: p.squadra_1, squadra_2: p.squadra_2,
+      gol_squadra_1: p.gol_squadra_1, gol_squadra_2: p.gol_squadra_2, struttura: p.struttura || "",
+    });
+    setMsg("");
+  };
+
+  const salvaModificaPartita = async () => {
+    setModificaBusy(true); setMsg("");
+    const c = modificaCampi;
+    const { error } = await supabase.from("partite").update({
+      data: c.data, squadra_1: c.squadra_1, squadra_2: c.squadra_2,
+      gol_squadra_1: Number(c.gol_squadra_1), gol_squadra_2: Number(c.gol_squadra_2),
+      struttura: c.struttura || null,
+    }).eq("id", modificaPartitaId);
+    setModificaBusy(false);
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Partita aggiornata");
+    if (!error) setModificaPartitaId(null);
+    carica();
+  };
+
   // ---------- gestione stagioni ----------
   const modificaStagioneCampo = (id, campo, valore) => {
     setStagioneModifiche((m) => ({ ...m, [id]: { ...m[id], [campo]: valore } }));
@@ -701,7 +727,31 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                 <th>Data</th><th>Squadre</th><th>Risultato</th><th>Stagione</th><th className="num">Prestazioni</th><th>Azioni</th>
               </tr></thead>
               <tbody>
-                {partite.map((p) => (
+                {partite.map((p) => modificaPartitaId === p.id ? (
+                  <tr key={p.id}>
+                    <td><input type="date" value={modificaCampi.data}
+                      onChange={(e) => setModificaCampi((c) => ({ ...c, data: e.target.value }))} /></td>
+                    <td>
+                      <input type="text" style={{ width: 90 }} value={modificaCampi.squadra_1}
+                        onChange={(e) => setModificaCampi((c) => ({ ...c, squadra_1: e.target.value }))} />
+                      {" – "}
+                      <input type="text" style={{ width: 90 }} value={modificaCampi.squadra_2}
+                        onChange={(e) => setModificaCampi((c) => ({ ...c, squadra_2: e.target.value }))} />
+                    </td>
+                    <td className="num">
+                      <input type="number" min="0" style={{ width: 48 }} value={modificaCampi.gol_squadra_1}
+                        onChange={(e) => setModificaCampi((c) => ({ ...c, gol_squadra_1: e.target.value }))} />
+                      {"-"}
+                      <input type="number" min="0" style={{ width: 48 }} value={modificaCampi.gol_squadra_2}
+                        onChange={(e) => setModificaCampi((c) => ({ ...c, gol_squadra_2: e.target.value }))} />
+                    </td>
+                    <td className="num">{prestazioniConteggio[p.id] || 0}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <button className="mini ok" disabled={modificaBusy} onClick={salvaModificaPartita}>💾 Salva</button>{" "}
+                      <button className="mini" disabled={modificaBusy} onClick={() => setModificaPartitaId(null)}>Annulla</button>
+                    </td>
+                  </tr>
+                ) : (
                   <tr key={p.id}>
                     <td>{p.data}</td>
                     <td className="pname">{p.squadra_1} – {p.squadra_2}</td>
@@ -716,7 +766,8 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                       </select>
                     </td>
                     <td className="num">{prestazioniConteggio[p.id] || 0}</td>
-                    <td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <button className="mini" onClick={() => apriModificaPartita(p)}>Modifica</button>{" "}
                       <button className="mini no" onClick={() => apriElimina(
                         "partita", p.id, `${p.data} · ${p.squadra_1} ${p.gol_squadra_1}-${p.gol_squadra_2} ${p.squadra_2}`,
                       )}>Elimina</button>
@@ -726,6 +777,12 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
               </tbody>
             </table>
           </div>
+          {modificaPartitaId != null && (prestazioniConteggio[modificaPartitaId] || 0) > 0 && (
+            <div className="note">
+              ⚠ I gol dei singoli giocatori non si aggiornano da soli — correggili nella sezione
+              "Dati partita" qui sotto se cambi il risultato.
+            </div>
+          )}
 
           <h2>Dati partita</h2>
           <p className="season">Assist, clean sheet, cartellini, autogol — Fubles non li espone, li inserisci tu.</p>
