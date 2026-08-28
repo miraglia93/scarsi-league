@@ -45,6 +45,22 @@ async function emailDestinatari(tipo, body) {
       .eq("lega_id", lega_id).eq("giocatore_id", body.giocatore_id);
     return (data || []).map((r) => r.email);
   }
+  if (tipo === "capitano_assegnato") {
+    return body.email ? [body.email.toLowerCase()] : [];
+  }
+  if (tipo === "proposta_ricevuta") {
+    const { data: pr } = await db.from("prestazioni").select("squadra")
+      .eq("partita_id", body.partita_id).eq("giocatore_id", body.giocatore_id).maybeSingle();
+    if (!pr) return [];
+    const { data: cap } = await db.from("capitani_partita").select("email")
+      .eq("partita_id", body.partita_id).eq("squadra", pr.squadra);
+    const { data: gestori } = await db.from("membri_autorizzati").select("email")
+      .eq("lega_id", lega_id).in("ruolo", ["admin", "coorganizzatore"]);
+    return [...new Set([...(cap || []).map((c) => c.email), ...(gestori || []).map((g) => g.email)])];
+  }
+  if (tipo === "proposta_decisa") {
+    return body.proposto_da_email ? [body.proposto_da_email.toLowerCase()] : [];
+  }
   return [];
 }
 
@@ -63,6 +79,12 @@ async function costruisciMessaggio(tipo, body) {
       return { titolo: "Nuova partita disponibile ⚽", corpo: body.label || "È stata importata una nuova partita", url: "/?sezione=partite" };
     case "premio_assegnato":
       return { titolo: "Hai vinto un premio! 🏅", corpo: body.etichetta || "Controlla la tua bacheca", url: "/" };
+    case "capitano_assegnato":
+      return { titolo: "Sei stato nominato capitano ⚡", corpo: body.label ? `Capitano ${body.squadra} — ${body.label}` : `Capitano ${body.squadra || ""}`, url: body.partita_id ? `/partita/${body.partita_id}` : "/" };
+    case "proposta_ricevuta":
+      return { titolo: "Nuova proposta da approvare 📝", corpo: body.label || "Un capitano ha proposto una correzione per la tua squadra", url: body.partita_id ? `/partita/${body.partita_id}` : "/admin" };
+    case "proposta_decisa":
+      return { titolo: body.esito === "approvata" ? "Proposta approvata ✅" : "Proposta rifiutata ❌", corpo: body.label || "La tua proposta è stata gestita", url: body.partita_id ? `/partita/${body.partita_id}` : "/" };
     default:
       return null;
   }

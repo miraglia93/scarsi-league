@@ -114,7 +114,10 @@ aperta, il resto è nel parcheggio sotto.
   gestore, dal pannello admin) le approva o rifiuta — stesso schema
   in_attesa/approvata/rifiutata già usato per le richieste di accesso
   (v1.21.0, tabella `dati_manuali_proposte` + RPC `approva_proposta_dati`/
-  `rifiuta_proposta_dati`).
+  `rifiuta_proposta_dati`). Tre nuovi eventi push aggiunti allo stesso
+  sistema esistente (§14): capitano nominato (a chi viene assegnato),
+  proposta ricevuta (al capitano bersaglio e al gestore), proposta
+  approvata/rifiutata (a chi l'ha proposta) — v1.22.0.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 

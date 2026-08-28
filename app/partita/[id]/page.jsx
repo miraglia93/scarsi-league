@@ -300,6 +300,7 @@ export default function Partita() {
             mieSquadre={mieSquadreCapitano}
             tutteLeSquadre={squadre}
             giocatori={giocatoriMap}
+            legaId={partita.lega_id}
           />
         </>
       )}

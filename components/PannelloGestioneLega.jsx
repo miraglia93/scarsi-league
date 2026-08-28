@@ -199,9 +199,21 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
 
   const decidiProposta = async (fn, id) => {
     setProposteBusyId(id); setMsg("");
+    const prop = proposte.find((p) => p.id === id);
     const { data, error } = await supabase.rpc(fn, { p_id: id });
     setProposteBusyId(null);
-    setMsg(error || data !== "ok" ? "⚠ " + (error ? tradErroreDb(error.message) : data) : "✅ Fatto");
+    if (error || data !== "ok") { setMsg("⚠ " + (error ? tradErroreDb(error.message) : data)); return; }
+    setMsg("✅ Fatto");
+    if (prop) {
+      const p = partite.find((x) => x.id === prop.partita_id);
+      const g = giocatori.find((x) => x.id === prop.giocatore_id);
+      inviaPush({
+        tipo: "proposta_decisa", proposto_da_email: prop.proposto_da_email,
+        esito: fn === "approva_proposta_dati" ? "approvata" : "rifiutata",
+        partita_id: prop.partita_id,
+        label: g && p ? `${g.nickname || g.nome} · ${p.data}` : undefined,
+      });
+    }
     carica();
   };
 
@@ -426,6 +438,8 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     setCapitaniBusy(false);
     if (error) { setDatiMsg("⚠ " + tradErroreDb(error.message)); return; }
     setCapitani((c) => ({ ...c, [squadra]: email }));
+    const p = partite.find((x) => x.id === Number(partitaSelId));
+    if (p) inviaPush({ tipo: "capitano_assegnato", email, squadra, partita_id: p.id, label: `${p.data} · ${p.squadra_1}-${p.squadra_2}` });
   };
 
   const datoOrgDi = (giocatoreId) => datiOrg.find((d) => d.giocatore_id === giocatoreId) || {};

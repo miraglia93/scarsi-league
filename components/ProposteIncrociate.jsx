@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { tradErroreDb } from "../lib/engine";
+import { inviaPush } from "../lib/push";
 
 function rigaVuota(p) {
   return {
@@ -21,7 +22,7 @@ function rigaVuota(p) {
 // per il capitano di UNA squadra: propone correzioni per i giocatori
 // dell'ALTRA squadra (soggette ad approvazione del capitano bersaglio
 // o del gestore) e approva/rifiuta le proposte ricevute sulla propria
-export default function ProposteIncrociate({ partitaId, mioEmail, mieSquadre, tutteLeSquadre, giocatori }) {
+export default function ProposteIncrociate({ partitaId, mioEmail, mieSquadre, tutteLeSquadre, giocatori, legaId }) {
   const [righePerSquadra, setRighePerSquadra] = useState({});
   const [proposte, setProposte] = useState([]);
   const [msg, setMsg] = useState("");
@@ -74,15 +75,29 @@ export default function ProposteIncrociate({ partitaId, mioEmail, mieSquadre, tu
       autogol: Number(riga.autogol) || 0,
     };
     const { error } = await supabase.from("dati_manuali_proposte").insert(payload);
-    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Proposta inviata, in attesa di approvazione");
+    if (error) { setMsg("⚠ " + tradErroreDb(error.message)); return; }
+    setMsg("✅ Proposta inviata, in attesa di approvazione");
+    inviaPush({
+      tipo: "proposta_ricevuta", partita_id: partitaId, giocatore_id: riga.giocatore_id, lega_id: legaId,
+      label: `${riga.nome}: gol ${riga.gol_manuale || 0}, assist ${riga.assist || 0}`,
+    });
     carica();
   };
 
   const decidi = async (fn, id) => {
     setBusyId(id); setMsg("");
+    const prop = proposte.find((p) => p.id === id);
     const { data, error } = await supabase.rpc(fn, { p_id: id });
     setBusyId(null);
-    setMsg(error || data !== "ok" ? "⚠ " + (error ? tradErroreDb(error.message) : data) : "✅ Fatto");
+    if (error || data !== "ok") { setMsg("⚠ " + (error ? tradErroreDb(error.message) : data)); return; }
+    setMsg("✅ Fatto");
+    if (prop) {
+      inviaPush({
+        tipo: "proposta_decisa", proposto_da_email: prop.proposto_da_email,
+        esito: fn === "approva_proposta_dati" ? "approvata" : "rifiutata",
+        partita_id: prop.partita_id, label: nomeGiocatore(prop.giocatore_id),
+      });
+    }
     carica();
   };
 
