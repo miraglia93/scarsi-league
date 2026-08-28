@@ -147,4 +147,9 @@ test("applicaNomiRegistrati: normalizza a Title Case i nomi Fubles scritti minus
   assertEqual(risultato.find((g) => g.id === 10).nome, "Marco De Rossi");
 });
 
+test("applicaNomiRegistrati: rietichetta i placeholder di account Fubles cancellati", () => {
+  const risultato = applicaNomiRegistrati([{ id: 11, nome: "Disabled User", nickname: null }], {});
+  assertEqual(risultato[0].nome, "Giocatore Fubles");
+});
+
 export const ok = riepilogo("engine.test.mjs");

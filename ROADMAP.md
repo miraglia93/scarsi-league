@@ -85,6 +85,20 @@ aperta, il resto è nel parcheggio sotto.
   richiesta di accesso in attesa (a chi gestisce la lega), richiesta approvata
   (a chi l'ha fatta), nuova partita importata (a tutti i membri), premio
   assegnato (al giocatore). Attivabile dal profilo, per singolo device/browser.
+- **Audit UX generale (v1.18.1 → v1.18.3)**: giro completo del sito per rifinire
+  esperienza e gestione prima di aprire ai pagamenti. Bug vero corretto: una
+  stagione attiva vuota nascondeva l'intera app (Classifiche/Partite/Giocatori
+  inclusi) dietro il wizard di onboarding admin, anche con altre stagioni piene
+  di dati — ora appare solo se la lega non ha mai avuto partite. Rifiniture:
+  nomi giocatore normalizzati a Title Case ovunque invece di restare come
+  scritti su Fubles (minuscolo/maiuscolo a caso), placeholder di account Fubles
+  cancellati ("Disabled User") rietichettati invece di comparire così com'è in
+  grafiche condivisibili, Team of the Week con pulsante di condivisione
+  WhatsApp (mancava, a differenza della pagina partita), sotto-tab mobile con
+  sfumatura ai bordi per segnalare lo scroll orizzontale, colonna Ruolo
+  separata da Piano nel pannello Piattaforma. Non affrontato per ora (impatto
+  basso, costo alto): skeleton loading al posto del "Caricamento…" a schermo
+  intero — schermo per schermo, da rivalutare se serve davvero.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 
