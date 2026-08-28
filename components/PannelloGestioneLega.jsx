@@ -40,6 +40,10 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const [datiMsg, setDatiMsg] = useState("");
   const [datiBusy, setDatiBusy] = useState(false);
 
+  // ---------- capitani (per la partita selezionata sopra) ----------
+  const [capitani, setCapitani] = useState({}); // squadra -> email
+  const [capitaniBusy, setCapitaniBusy] = useState(false);
+
   // ---------- gestione partite ----------
   const [spostaBusy, setSpostaBusy] = useState(null); // id partita in corso di spostamento
   const [modificaPartitaId, setModificaPartitaId] = useState(null);
@@ -145,11 +149,12 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   }, [legaCorrente?.id]);
 
   useEffect(() => {
-    if (!partitaSelId) { setDatiRighe([]); return; }
+    if (!partitaSelId) { setDatiRighe([]); setCapitani({}); return; }
     (async () => {
-      const [{ data: pr }, { data: dm }] = await Promise.all([
+      const [{ data: pr }, { data: dm }, { data: cap }] = await Promise.all([
         supabase.from("prestazioni").select("*").eq("partita_id", partitaSelId),
         supabase.from("dati_manuali").select("*").eq("partita_id", partitaSelId),
+        supabase.from("capitani_partita").select("*").eq("partita_id", partitaSelId),
       ]);
       const dmByGiocatore = {};
       (dm || []).forEach((d) => { dmByGiocatore[d.giocatore_id] = d; });
@@ -158,8 +163,10 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
         const esistente = dmByGiocatore[p.giocatore_id];
         return {
           giocatore_id: p.giocatore_id,
+          squadra: p.squadra,
           nome: g?.nickname || g?.nome || "Giocatore",
           ruolo: p.ruolo || g?.ruolo_prevalente || "—",
+          gol_manuale: esistente?.gol_manuale ?? "",
           assist: esistente?.assist ?? 0,
           clean_sheet: esistente?.clean_sheet ?? false,
           gol_subiti: esistente?.gol_subiti ?? "",
@@ -169,6 +176,9 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
         };
       }).sort((a, b) => a.nome.localeCompare(b.nome));
       setDatiRighe(righe);
+      const capMap = {};
+      (cap || []).forEach((c) => { capMap[c.squadra] = c.email; });
+      setCapitani(capMap);
       setDatiMsg("");
       // eslint-disable-next-line react-hooks/exhaustive-deps
     })();
@@ -367,6 +377,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     const payload = datiRighe.map((r) => ({
       partita_id: Number(partitaSelId),
       giocatore_id: r.giocatore_id,
+      gol_manuale: r.gol_manuale === "" ? null : Number(r.gol_manuale),
       assist: Number(r.assist) || 0,
       clean_sheet: !!r.clean_sheet,
       gol_subiti: r.gol_subiti === "" ? null : Number(r.gol_subiti),
@@ -377,6 +388,23 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     const { error } = await supabase.from("dati_manuali").upsert(payload, { onConflict: "partita_id,giocatore_id" });
     setDatiBusy(false);
     setDatiMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Dati salvati");
+  };
+
+  const salvaCapitano = async (squadra, email) => {
+    setCapitaniBusy(true); setDatiMsg("");
+    if (!email) {
+      const { error } = await supabase.from("capitani_partita").delete()
+        .eq("partita_id", Number(partitaSelId)).eq("squadra", squadra);
+      setCapitaniBusy(false);
+      if (error) { setDatiMsg("⚠ " + tradErroreDb(error.message)); return; }
+      setCapitani((c) => { const n = { ...c }; delete n[squadra]; return n; });
+      return;
+    }
+    const { error } = await supabase.from("capitani_partita")
+      .upsert({ partita_id: Number(partitaSelId), squadra, email }, { onConflict: "partita_id,squadra" });
+    setCapitaniBusy(false);
+    if (error) { setDatiMsg("⚠ " + tradErroreDb(error.message)); return; }
+    setCapitani((c) => ({ ...c, [squadra]: email }));
   };
 
   const datoOrgDi = (giocatoreId) => datiOrg.find((d) => d.giocatore_id === giocatoreId) || {};
@@ -796,10 +824,37 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
               <p className="season">Nessun partecipante trovato per questa partita.</p>
             ) : (
               <>
+                <h3 style={{ marginTop: 16 }}>Capitani</h3>
+                <p className="season">
+                  Ogni capitano può inserire marcatori/assist/cartellini per la propria squadra
+                  direttamente dalla pagina della partita — solo per i giocatori con un account
+                  collegato.
+                </p>
+                <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                  {[...new Set(datiRighe.map((r) => r.squadra))].map((squadra) => {
+                    const candidati = datiRighe
+                      .filter((r) => r.squadra === squadra)
+                      .map((r) => ({ ...r, membro: membri.find((m) => m.giocatore_id === r.giocatore_id) }))
+                      .filter((r) => r.membro);
+                    return (
+                      <div key={squadra}>
+                        <label className="flabel">Capitano {squadra}</label>
+                        <select value={capitani[squadra] || ""} disabled={capitaniBusy}
+                          onChange={(e) => salvaCapitano(squadra, e.target.value)}>
+                          <option value="">— nessuno —</option>
+                          {candidati.map((r) => (
+                            <option key={r.giocatore_id} value={r.membro.email}>{r.nome}</option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+
                 <div style={{ overflowX: "auto" }}>
                   <table>
                     <thead><tr>
-                      <th>Giocatore</th><th>Ruolo</th><th className="num">Assist</th><th className="num">Clean sheet</th>
+                      <th>Giocatore</th><th>Ruolo</th><th className="num">Gol</th><th className="num">Assist</th><th className="num">Clean sheet</th>
                       <th className="num">Gol subiti</th><th className="num">Cartellini</th><th className="num">Autogol</th><th>Note</th>
                     </tr></thead>
                     <tbody>
@@ -807,6 +862,11 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                         <tr key={r.giocatore_id}>
                           <td className="pname">{r.nome}</td>
                           <td>{r.ruolo}</td>
+                          <td className="num">
+                            <input type="number" min="0" style={{ width: 56 }} value={r.gol_manuale}
+                              placeholder="Fubles"
+                              onChange={(e) => aggiornaRiga(r.giocatore_id, "gol_manuale", e.target.value)} />
+                          </td>
                           <td className="num">
                             <input type="number" min="0" value={r.assist}
                               onChange={(e) => aggiornaRiga(r.giocatore_id, "assist", e.target.value)} />

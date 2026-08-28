@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth, distribuzioneVoti, computeAndamento, computeXP, computeLivello, tradErroreDb, applicaNomiRegistrati } from "../lib/engine";
+import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth, distribuzioneVoti, computeAndamento, computeXP, computeLivello, tradErroreDb, applicaNomiRegistrati, applicaGolManuali } from "../lib/engine";
 import PlayerCard from "../components/PlayerCard";
 import FormaDots from "../components/FormaDots";
 import MiniTable from "../components/MiniTable";
@@ -756,7 +756,7 @@ export default function Home() {
       stagioneSel === "all" || p.stagione_id === stagioneSel || (p.partita_id != null && paIds.has(p.partita_id))
     ));
     if (!pa.length) return { P: {}, matches: [], votes: [], dm: [], premi: [], vuota: true };
-    return { ...assemble(pa, giocatoriLega, pr, vo), dm, premi };
+    return { ...assemble(pa, giocatoriLega, applicaGolManuali(pr, dm), vo), dm, premi };
   }, [raw, legaId, stagioneSel, giocatoriLega]);
   const S = useMemo(() => (data && !data.vuota ? buildStats(data.P, data.matches) : null), [data]);
   const rel = useMemo(() => (data ? pairAndNemesis(data.matches) : null), [data]);
@@ -769,7 +769,8 @@ export default function Home() {
     const paIds = new Set(pa.map((p) => p.id));
     const pr = raw.pr.filter((p) => paIds.has(p.partita_id));
     const vo = raw.vo.filter((v) => paIds.has(v.partita_id));
-    return assemble(pa, giocatoriLega, pr, vo);
+    const dm = raw.dm.filter((d) => paIds.has(d.partita_id));
+    return assemble(pa, giocatoriLega, applicaGolManuali(pr, dm), vo);
   }, [raw, legaId, giocatoriLega]);
   const SAllTime = useMemo(() => (dataAllTime ? buildStats(dataAllTime.P, dataAllTime.matches) : null), [dataAllTime]);
   const dmAllTimeByChiave = useMemo(() => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { assemble, buildStats, tradErroreDb, applicaNomiRegistrati } from "../../lib/engine";
+import { assemble, buildStats, tradErroreDb, applicaNomiRegistrati, applicaGolManuali } from "../../lib/engine";
 import AppNav from "../../components/AppNav";
 import SubTabs from "../../components/SubTabs";
 
@@ -36,20 +36,21 @@ export default function HallOfFame() {
       const { data: me } = await supabase.from("membri_autorizzati").select("email").eq("email", mail);
       if (!me || !me.length) { setStato("no-membro"); return; }
 
-      const [le, st, pa, gi, pr, vo] = await Promise.all([
+      const [le, st, pa, gi, pr, vo, dm] = await Promise.all([
         supabase.from("leghe").select("*").order("id"),
         supabase.from("stagioni").select("*"),
         supabase.from("partite").select("*"),
         supabase.from("giocatori").select("*"),
         supabase.from("prestazioni").select("*"),
         supabase.from("voti_ricevuti").select("*"),
+        supabase.from("dati_manuali").select("*"),
       ]);
-      const err = le.error || st.error || pa.error || gi.error || pr.error || vo.error;
+      const err = le.error || st.error || pa.error || gi.error || pr.error || vo.error || dm.error;
       if (err) { setErrore(tradErroreDb(err.message)); setStato("errore"); return; }
 
       setLeghe(le.data || []);
       setLegaId((le.data || [])[0]?.id ?? null);
-      setRaw({ st: st.data || [], pa: pa.data || [], gi: gi.data || [], pr: pr.data || [], vo: vo.data || [] });
+      setRaw({ st: st.data || [], pa: pa.data || [], gi: gi.data || [], pr: pr.data || [], vo: vo.data || [], dm: dm.data || [] });
       setStato("ok");
     })();
   }, []);
@@ -78,7 +79,8 @@ export default function HallOfFame() {
     const paIds = new Set(paStagione.map((p) => p.id));
     const pr = raw.pr.filter((p) => paIds.has(p.partita_id));
     const vo = raw.vo.filter((v) => paIds.has(v.partita_id));
-    const { P, matches } = assemble(paStagione, giocLega, pr, vo);
+    const dm = raw.dm.filter((d) => paIds.has(d.partita_id));
+    const { P, matches } = assemble(paStagione, giocLega, applicaGolManuali(pr, dm), vo);
     const S = buildStats(P, matches);
     const players = Object.values(S).filter((p) => p.presenze > 0);
     if (!players.length) return { stagione: s, vuota: true };

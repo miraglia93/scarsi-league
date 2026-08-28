@@ -1,7 +1,7 @@
 import { test, assert, assertEqual, assertVicino, riepilogo } from "./_assert.mjs";
 import {
   assemble, buildStats, computeXP, computeLivello, computeBadges, buildTOTW, tradErroreDb, cardStats,
-  applicaNomiRegistrati,
+  applicaNomiRegistrati, applicaGolManuali,
 } from "../lib/engine.js";
 
 /* dataset sintetico: 4 giocatori, 2 partite, coerente con le forme delle
@@ -150,6 +150,23 @@ test("applicaNomiRegistrati: normalizza a Title Case i nomi Fubles scritti minus
 test("applicaNomiRegistrati: rietichetta i placeholder di account Fubles cancellati", () => {
   const risultato = applicaNomiRegistrati([{ id: 11, nome: "Disabled User", nickname: null }], {});
   assertEqual(risultato[0].nome, "Giocatore Fubles");
+});
+
+test("applicaGolManuali: la correzione manuale del capitano sostituisce il gol Fubles", () => {
+  const prestazioni = [
+    { partita_id: 1, giocatore_id: 1, gol: 2 },
+    { partita_id: 1, giocatore_id: 2, gol: 0 },
+  ];
+  const datiManuali = [{ partita_id: 1, giocatore_id: 1, gol_manuale: 3 }];
+  const risultato = applicaGolManuali(prestazioni, datiManuali);
+  assertEqual(risultato.find((r) => r.giocatore_id === 1).gol, 3);
+  assertEqual(risultato.find((r) => r.giocatore_id === 2).gol, 0, "un giocatore senza correzione resta invariato");
+});
+
+test("applicaGolManuali: nessuna correzione manuale lascia le prestazioni invariate", () => {
+  const prestazioni = [{ partita_id: 1, giocatore_id: 1, gol: 2 }];
+  assertEqual(applicaGolManuali(prestazioni, []), prestazioni);
+  assertEqual(applicaGolManuali(prestazioni, [{ partita_id: 1, giocatore_id: 1, gol_manuale: null }]), prestazioni);
 });
 
 export const ok = riepilogo("engine.test.mjs");

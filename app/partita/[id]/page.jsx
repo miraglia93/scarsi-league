@@ -9,6 +9,7 @@ import CopyButton from "../../../components/CopyButton";
 import RecapImageButton from "../../../components/RecapImageButton";
 import SubTabs from "../../../components/SubTabs";
 import CommentiPartita from "../../../components/CommentiPartita";
+import CapitanoSquadra from "../../../components/CapitanoSquadra";
 
 function RigaFormazione({ p }) {
   return (
@@ -69,6 +70,8 @@ export default function Partita() {
   const [tab, setTab] = useState("formazioni");
   const [mioEmail, setMioEmail] = useState("");
   const [sonoGestore, setSonoGestore] = useState(false);
+  const [mieSquadreCapitano, setMieSquadreCapitano] = useState([]);
+  const [giocatoriMap, setGiocatoriMap] = useState({});
 
   useEffect(() => {
     (async () => {
@@ -110,6 +113,10 @@ export default function Partita() {
         if (giErr) { setErrore(tradErroreDb(giErr.message)); setStato("errore"); return; }
         applicaNomiRegistrati(gi || [], mappaNomi).forEach((g) => { giocMap[g.id] = g; });
       }
+      setGiocatoriMap(giocMap);
+
+      const { data: cap } = await supabase.from("capitani_partita").select("squadra").eq("partita_id", id).eq("email", mail);
+      setMieSquadreCapitano((cap || []).map((c) => c.squadra));
 
       setRighe((pr || []).map((r) => {
         const g = giocMap[r.giocatore_id];
@@ -121,6 +128,7 @@ export default function Partita() {
           foto_url: g?.foto_url,
           ruolo: r.ruolo || g?.ruolo_prevalente || "—",
           voto: r.voto == null ? null : Number(r.voto),
+          gol: d?.gol_manuale != null ? d.gol_manuale : r.gol,
           assist: d?.assist || 0,
           clean_sheet: !!d?.clean_sheet,
           cartellini: d?.cartellini || 0,
@@ -254,6 +262,7 @@ export default function Partita() {
       <SubTabs active={tab} onSelect={setTab} tabs={[
         { key: "formazioni", label: "Formazioni" },
         { key: "commenti", label: "Commenti" },
+        ...(mieSquadreCapitano.length ? [{ key: "squadra", label: "Squadra" }] : []),
       ]} />
 
       {tab === "formazioni" && (
@@ -274,6 +283,17 @@ export default function Partita() {
 
       {tab === "commenti" && (
         <CommentiPartita partitaId={id} legaId={partita.lega_id} mioEmail={mioEmail} sonoGestore={sonoGestore} />
+      )}
+
+      {tab === "squadra" && (
+        <>
+          <p className="season" style={{ marginTop: 16 }}>
+            Sei capitano — inserisci marcatori, assist e cartellini per la tua squadra.
+          </p>
+          {mieSquadreCapitano.map((squadra) => (
+            <CapitanoSquadra key={squadra} partitaId={id} squadra={squadra} giocatori={giocatoriMap} />
+          ))}
+        </>
       )}
       </div>
     </>
