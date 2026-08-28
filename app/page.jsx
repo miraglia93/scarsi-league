@@ -721,6 +721,15 @@ export default function Home() {
     return applicaNomiRegistrati(raw.gi.filter((g) => g.lega_id === legaId), nomiRegistrati);
   }, [raw, legaId, nomiRegistrati]);
 
+  // lega-wide, mai filtrato per stagione: distingue "lega mai iniziata" (onboarding vero)
+  // da "questa stagione è vuota ma la lega ha storico altrove" (bug v1.18.1: la seconda
+  // situazione mostrava comunque l'intero wizard di onboarding, nascondendo classifiche/
+  // partite/giocatori delle stagioni passate a ogni sezione dell'app)
+  const legaVuota = useMemo(() => {
+    if (!raw || legaId == null) return true;
+    return !raw.pa.some((p) => p.lega_id === legaId);
+  }, [raw, legaId]);
+
   const data = useMemo(() => {
     if (!raw || legaId == null) return null;
     const pa = raw.pa.filter((p) => p.lega_id === legaId && (stagioneSel === "all" || p.stagione_id === stagioneSel));
@@ -835,7 +844,7 @@ export default function Home() {
                 ruoloUtente={ruoloUtente} mostraMenu xp={xpDiGiocatore(mioGiocatoreId)} />
             </>
           ) : sezione !== "tu" || mioGiocatoreId != null ? (
-            ruoloUtente === "admin" || ruoloUtente === "coorganizzatore" ? (
+            (ruoloUtente === "admin" || ruoloUtente === "coorganizzatore") && legaVuota ? (
               <div className="wrap" style={{ maxWidth: 480, paddingLeft: 0, paddingRight: 0 }}>
                 <p className="season">Sei {ruoloUtente === "admin" ? "admin" : "coorganizzatore"} qui — un paio di cose per partire</p>
                 <p className="msg">
@@ -847,10 +856,12 @@ export default function Home() {
                   Quando hai i dati Fubles della prima partita, <a className="plink" href="/admin">importali dal pannello di gestione</a>.
                 </p>
               </div>
+            ) : legaVuota ? (
+              <p className="centered">Questa lega non ha ancora partite importate ⚽</p>
             ) : stagioneSel !== "all" && stagioneSel === stagioneAttiva?.id ? (
               <p className="centered">{`La stagione ${stagioneAttiva.nome} inizia a breve ⚽`}</p>
             ) : (
-              <p className="centered">Questa lega non ha ancora partite importate ⚽</p>
+              <p className="centered">Questa stagione non ha ancora partite — scegli un&apos;altra stagione qui sopra ⚽</p>
             )
           ) : (
             <p className="centered">
