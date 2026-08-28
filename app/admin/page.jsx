@@ -96,12 +96,13 @@ export default function Admin() {
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table>
-                  <thead><tr><th>Email</th><th>Piano</th><th>Abbonamento</th><th>Dal</th><th></th></tr></thead>
+                  <thead><tr><th>Email</th><th>Piano</th><th>Ruolo</th><th>Abbonamento</th><th>Dal</th><th></th></tr></thead>
                   <tbody>
                     {utentiPiattaforma.map((u) => (
                       <tr key={u.email}>
                         <td>{u.email}</td>
-                        <td>{u.piano}{u.super_admin ? " · super admin" : ""}</td>
+                        <td>{u.piano}</td>
+                        <td>{u.super_admin ? "👑 super admin" : "—"}</td>
                         <td>{u.abbonamento_attivo ? "🟢 attivo" : "⚪ non attivo"}</td>
                         <td>{new Date(u.creato_il).toLocaleDateString("it-IT")}</td>
                         <td>

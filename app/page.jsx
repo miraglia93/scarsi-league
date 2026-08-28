@@ -39,6 +39,19 @@ function TotwCard({ p }) {
   );
 }
 
+function buildTotwReportText(totw, matchLabel) {
+  const lines = [`⭐ SCARSI LEAGUE — Team of the Week · ${matchLabel}`];
+  ["POR", "DIF", "CEN", "ATT"].forEach((r) => {
+    totw.bande[r].forEach((p) => {
+      const nome = p.nick || p.nome;
+      const extra = [p.mvp ? "⭐ MVP" : null, p.gol > 0 ? `⚽${p.gol > 1 ? `×${p.gol}` : ""}` : null].filter(Boolean).join(" ");
+      lines.push(`${r} · ${nome} — voto ${p.voto.toFixed(1)}${extra ? " · " + extra : ""}`);
+    });
+  });
+  lines.push(`👉 scarsileague.it`);
+  return lines.join("\n");
+}
+
 function BadgeRow({ badges }) {
   if (!badges.length) return null;
   return (
@@ -1033,7 +1046,9 @@ export default function Home() {
                 {totw.disponibili === 0 ? (
                   <p className="season">Nessun voto disponibile per questa partita.</p>
                 ) : (
-                  <div className="pitch">
+                  <>
+                    <p><CopyButton text={buildTotwReportText(totw, totwMatch.d)} label="📋 Copia formazione WhatsApp" /></p>
+                    <div className="pitch">
                     <div className="pitch-header">
                       <span className="pitch-logo">Scarsi <em>League</em></span>
                       <h3 className="pitch-title">Team of the Week · {totwMatch.d}</h3>
@@ -1051,7 +1066,8 @@ export default function Home() {
                         </div>
                       ))}
                     </div>
-                  </div>
+                    </div>
+                  </>
                 )}
               </>
             )}

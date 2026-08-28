@@ -133,8 +133,18 @@ test("applicaNomiRegistrati: sostituisce il nome solo per chi ha una scheda rive
   assertEqual(risultato.find((g) => g.id === 1).nickname, null, "gli altri campi non devono cambiare");
 });
 
-test("applicaNomiRegistrati: mappa vuota restituisce l'array invariato", () => {
+test("applicaNomiRegistrati: mappa vuota lascia i nomi già ben capitalizzati invariati", () => {
   assertEqual(applicaNomiRegistrati(giocatori, {}), giocatori);
+});
+
+test("applicaNomiRegistrati: normalizza a Title Case i nomi Fubles scritti minuscoli o maiuscoli", () => {
+  const sporchi = [
+    { id: 9, nome: "simone campagna", nickname: null },
+    { id: 10, nome: "MARCO DE ROSSI", nickname: null },
+  ];
+  const risultato = applicaNomiRegistrati(sporchi, {});
+  assertEqual(risultato.find((g) => g.id === 9).nome, "Simone Campagna");
+  assertEqual(risultato.find((g) => g.id === 10).nome, "Marco De Rossi");
 });
 
 export const ok = riepilogo("engine.test.mjs");

@@ -384,7 +384,9 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
 }
 
 .subtabs{display:flex;gap:8px;overflow-x:auto;padding:14px 0 6px;-webkit-overflow-scrolling:touch;
-  scrollbar-width:none;}
+  scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(to right,transparent,#000 16px,#000 calc(100% - 16px),transparent);
+  mask-image:linear-gradient(to right,transparent,#000 16px,#000 calc(100% - 16px),transparent);}
 .subtabs::-webkit-scrollbar{display:none;}
 .subtabs button,.subtabs a{flex-shrink:0;padding:7px 15px;border-radius:20px;font-size:12px;
   font-weight:700;color:#8FA096;background:#121B17;border:none;cursor:pointer;text-decoration:none;
