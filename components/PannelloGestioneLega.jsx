@@ -44,6 +44,10 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const [capitani, setCapitani] = useState({}); // squadra -> email
   const [capitaniBusy, setCapitaniBusy] = useState(false);
 
+  // ---------- proposte incrociate dei capitani, in attesa di approvazione ----------
+  const [proposte, setProposte] = useState([]);
+  const [proposteBusyId, setProposteBusyId] = useState(null);
+
   // ---------- gestione partite ----------
   const [spostaBusy, setSpostaBusy] = useState(null); // id partita in corso di spostamento
   const [modificaPartitaId, setModificaPartitaId] = useState(null);
@@ -136,6 +140,15 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     const conteggio = {};
     (prc.data || []).forEach((row) => { conteggio[row.partita_id] = (conteggio[row.partita_id] || 0) + 1; });
     setPrestazioniConteggio(conteggio);
+
+    const idsPartite = (pa.data || []).map((p) => p.id);
+    if (idsPartite.length) {
+      const { data: prop } = await supabase.from("dati_manuali_proposte").select("*")
+        .in("partita_id", idsPartite).eq("stato", "in_attesa").order("creato_il");
+      setProposte(prop || []);
+    } else {
+      setProposte([]);
+    }
   };
 
   useEffect(() => { carica(); }, [legaId]);
@@ -183,6 +196,14 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     })();
   }, [partitaSelId]);
+
+  const decidiProposta = async (fn, id) => {
+    setProposteBusyId(id); setMsg("");
+    const { data, error } = await supabase.rpc(fn, { p_id: id });
+    setProposteBusyId(null);
+    setMsg(error || data !== "ok" ? "⚠ " + (error ? tradErroreDb(error.message) : data) : "✅ Fatto");
+    carica();
+  };
 
   const azione = async (fn, email) => {
     setMsg("");
@@ -904,6 +925,40 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                 {datiMsg && <div className="note">{datiMsg}</div>}
               </>
             )
+          )}
+
+          <h2 style={{ marginTop: 24 }}>Proposte dei capitani in attesa ({proposte.length})</h2>
+          {proposte.length === 0 ? (
+            <p className="season">Nessuna proposta incrociata da approvare 😌</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead><tr>
+                  <th>Partita</th><th>Giocatore</th><th>Proposto da</th>
+                  <th className="num">Gol</th><th className="num">Assist</th><th className="num">Cartellini</th><th>Azioni</th>
+                </tr></thead>
+                <tbody>
+                  {proposte.map((p) => {
+                    const partitaProp = partite.find((x) => x.id === p.partita_id);
+                    const giocatoreProp = giocatori.find((x) => x.id === p.giocatore_id);
+                    return (
+                      <tr key={p.id}>
+                        <td>{partitaProp ? `${partitaProp.data} · ${partitaProp.squadra_1}-${partitaProp.squadra_2}` : `#${p.partita_id}`}</td>
+                        <td className="pname">{giocatoreProp?.nickname || giocatoreProp?.nome || `#${p.giocatore_id}`}</td>
+                        <td>{p.proposto_da_email}</td>
+                        <td className="num">{p.gol_manuale ?? "—"}</td>
+                        <td className="num">{p.assist}</td>
+                        <td className="num">{p.cartellini}</td>
+                        <td>
+                          <button className="mini ok" disabled={proposteBusyId === p.id} onClick={() => decidiProposta("approva_proposta_dati", p.id)}>✓ Approva</button>{" "}
+                          <button className="mini no" disabled={proposteBusyId === p.id} onClick={() => decidiProposta("rifiuta_proposta_dati", p.id)}>✗ Rifiuta</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </>
       )}

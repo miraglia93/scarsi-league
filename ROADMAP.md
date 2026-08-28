@@ -99,6 +99,22 @@ aperta, il resto è nel parcheggio sotto.
   separata da Piano nel pannello Piattaforma. Non affrontato per ora (impatto
   basso, costo alto): skeleton loading al posto del "Caricamento…" a schermo
   intero — schermo per schermo, da rivalutare se serve davvero.
+- **Modifica partite + capitani (v1.19.0 → v1.21.0)**: chi gestisce la lega
+  può ora correggere direttamente data/squadre/risultato di una partita già
+  importata (v1.19.0). Introdotti i "capitani": due ruoli assegnati dal
+  gestore per singola partita (uno per squadra, dato che Bianchi/Neri si
+  rimescolano ogni lunedì), con un nuovo sotto-tab "Squadra" sulla pagina
+  della partita da cui inseriscono gol/assist/cartellini/clean sheet per i
+  giocatori della propria squadra (v1.20.0). Vincolo tecnico chiave: i gol
+  corretti a mano NON toccano mai `prestazioni.gol` (sovrascritto ad ogni
+  re-import da Fubles) — vivono in `dati_manuali.gol_manuale`, applicato da
+  `applicaGolManuali()` prima di ogni calcolo di classifiche/carte. Un
+  capitano può anche proporre le stesse correzioni per la squadra
+  avversaria: restano in sospeso finché il capitano bersaglio (o il
+  gestore, dal pannello admin) le approva o rifiuta — stesso schema
+  in_attesa/approvata/rifiutata già usato per le richieste di accesso
+  (v1.21.0, tabella `dati_manuali_proposte` + RPC `approva_proposta_dati`/
+  `rifiuta_proposta_dati`).
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 

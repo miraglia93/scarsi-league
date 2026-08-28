@@ -10,6 +10,7 @@ import RecapImageButton from "../../../components/RecapImageButton";
 import SubTabs from "../../../components/SubTabs";
 import CommentiPartita from "../../../components/CommentiPartita";
 import CapitanoSquadra from "../../../components/CapitanoSquadra";
+import ProposteIncrociate from "../../../components/ProposteIncrociate";
 
 function RigaFormazione({ p }) {
   return (
@@ -293,6 +294,13 @@ export default function Partita() {
           {mieSquadreCapitano.map((squadra) => (
             <CapitanoSquadra key={squadra} partitaId={id} squadra={squadra} giocatori={giocatoriMap} />
           ))}
+          <ProposteIncrociate
+            partitaId={id}
+            mioEmail={mioEmail}
+            mieSquadre={mieSquadreCapitano}
+            tutteLeSquadre={squadre}
+            giocatori={giocatoriMap}
+          />
         </>
       )}
       </div>
