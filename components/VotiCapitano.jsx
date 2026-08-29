@@ -10,7 +10,7 @@ import { tradErroreDb } from "../lib/engine";
 // ProposteIncrociate. Ha effetto sulla media/overall/MVP solo se la
 // stagione di questa partita ha un "peso voto capitano" impostato
 // (applicaVotoArricchito in lib/engine.js).
-export default function VotiCapitano({ partitaId, mieSquadre, tutteLeSquadre, giocatori }) {
+export default function VotiCapitano({ partitaId, mieSquadre, tutteLeSquadre, giocatori, mioEmail }) {
   const [righePerSquadra, setRighePerSquadra] = useState({});
   const [msg, setMsg] = useState("");
   const [busyId, setBusyId] = useState(null);
@@ -53,7 +53,7 @@ export default function VotiCapitano({ partitaId, mieSquadre, tutteLeSquadre, gi
     if (riga.voto === "") return;
     setBusyId(riga.giocatore_id); setMsg("");
     const { error } = await supabase.from("voti_capitano")
-      .upsert({ partita_id: partitaId, giocatore_id: riga.giocatore_id, voto: Number(riga.voto) }, { onConflict: "partita_id,giocatore_id" });
+      .upsert({ partita_id: partitaId, giocatore_id: riga.giocatore_id, voto: Number(riga.voto), capitano_email: mioEmail }, { onConflict: "partita_id,giocatore_id" });
     setBusyId(null);
     setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Voto salvato");
   };

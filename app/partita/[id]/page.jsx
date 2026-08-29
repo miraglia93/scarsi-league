@@ -328,6 +328,7 @@ export default function Partita() {
                 mieSquadre={mieSquadreCapitano}
                 tutteLeSquadre={squadre}
                 giocatori={giocatoriMap}
+                mioEmail={mioEmail}
               />
               <ProposteIncrociate
                 partitaId={id}
