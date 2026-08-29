@@ -9,12 +9,25 @@ import { IconPlayer } from "./icons";
 // SelettoreLega, nessun dato da passargli oltre le iniziali da mostrare.
 export default function MenuAccount({ iniziali, notificaDot }) {
   const [aperto, setAperto] = useState(false);
+  const [mostraAdmin, setMostraAdmin] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
     const chiudiFuori = (e) => { if (ref.current && !ref.current.contains(e.target)) setAperto(false); };
     document.addEventListener("mousedown", chiudiFuori);
     return () => document.removeEventListener("mousedown", chiudiFuori);
+  }, []);
+
+  // autonomo come il resto del componente: se l'utente gestisce almeno
+  // una lega (admin o coorganizzatore), mostra la scorciatoia al pannello
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const mail = (session?.user?.email || "").toLowerCase();
+      if (!mail) return;
+      const { data } = await supabase.from("membri_autorizzati").select("ruolo")
+        .eq("email", mail).in("ruolo", ["admin", "coorganizzatore"]).limit(1);
+      setMostraAdmin(!!data?.length);
+    });
   }, []);
 
   return (
@@ -26,6 +39,7 @@ export default function MenuAccount({ iniziali, notificaDot }) {
       </button>
       {aperto && (
         <div className="sl-panel ma-panel">
+          {mostraAdmin && <a className="sl-riga" href="/admin">⚙ Pannello admin</a>}
           <a className="sl-riga" href="/bacheca">La tua bacheca</a>
           <a className="sl-riga" href="/profilo">Modifica profilo</a>
           <a className="sl-riga" href="/privacy">Privacy</a>

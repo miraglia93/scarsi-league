@@ -870,12 +870,21 @@ export default function Home() {
                   Quando hai i dati Fubles della prima partita, <a className="plink" href="/admin">importali dal pannello di gestione</a>.
                 </p>
               </div>
-            ) : legaVuota ? (
-              <p className="centered">Questa lega non ha ancora partite importate ⚽</p>
-            ) : stagioneSel !== "all" && stagioneSel === stagioneAttiva?.id ? (
-              <p className="centered">{`La stagione ${stagioneAttiva.nome} inizia a breve ⚽`}</p>
             ) : (
-              <p className="centered">Questa stagione non ha ancora partite — scegli un&apos;altra stagione qui sopra ⚽</p>
+              <>
+                {legaVuota ? (
+                  <p className="centered">Questa lega non ha ancora partite importate ⚽</p>
+                ) : stagioneSel !== "all" && stagioneSel === stagioneAttiva?.id ? (
+                  <p className="centered">{`La stagione ${stagioneAttiva.nome} inizia a breve ⚽`}</p>
+                ) : (
+                  <p className="centered">Questa stagione non ha ancora partite — scegli un&apos;altra stagione qui sopra ⚽</p>
+                )}
+                {(ruoloUtente === "admin" || ruoloUtente === "coorganizzatore") && (
+                  <p className="centered" style={{ marginTop: 4 }}>
+                    <a className="plink" href="/admin">⚙ Vai al pannello di gestione</a>
+                  </p>
+                )}
+              </>
             )
           ) : (
             <p className="centered">

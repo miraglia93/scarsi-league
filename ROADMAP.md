@@ -122,6 +122,17 @@ aperta, il resto è nel parcheggio sotto.
   Supabase Realtime): stesso evento della push ma sempre visibile,
   senza bisogno di attivare nulla, con badge dal vivo (nessun refresh
   di pagina) e link diretto al punto giusto quando ci si clicca sopra.
+- **Riordino pannello admin (v1.24.0)**: fix di un bug reale — quando la
+  stagione selezionata di default non ha ancora partite, l'intera
+  sezione "Lega" (sotto-tab inclusi, quindi anche "⚙ Gestione") spariva
+  dietro un messaggio piatto senza alcun link al pannello; ora chi
+  gestisce la lega trova sempre un link diretto. Aggiunta anche una
+  scorciatoia "⚙ Pannello admin" nel menu account per chi gestisce
+  almeno una lega, invece del solo sotto-tab nascosto. La tab "Partite"
+  del pannello (cresciuta parecchio con capitani/proposte) è stata
+  spezzata in tre sotto-tab — Elenco / Dati & capitani / Importa —
+  con un filtro per stagione sull'elenco partite (pre-impostato sulla
+  più recente) invece dell'unica lunga lista di tutte le stagioni.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 

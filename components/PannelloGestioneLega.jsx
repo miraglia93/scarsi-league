@@ -34,6 +34,11 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const [infoOrario, setInfoOrario] = useState("");
   const [infoBusy, setInfoBusy] = useState(false);
 
+  // ---------- sotto-navigazione tab "Partite" (importa | elenco | dati) ----------
+  const [partiteSubTab, setPartiteSubTab] = useState("elenco");
+  const [mostraImportManuale, setMostraImportManuale] = useState(false);
+  const [filtroStagionePartite, setFiltroStagionePartite] = useState(null); // null = non ancora inizializzato
+
   // ---------- dati partita ----------
   const [partitaSelId, setPartitaSelId] = useState("");
   const [datiRighe, setDatiRighe] = useState([]);
@@ -152,6 +157,14 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   };
 
   useEffect(() => { carica(); }, [legaId]);
+
+  // filtro "Elenco partite" pre-impostato sulla stagione più recente al
+  // primo caricamento, senza sovrascrivere una scelta successiva dell'utente
+  useEffect(() => {
+    if (filtroStagionePartite === null && stagioni.length) {
+      setFiltroStagionePartite(String(stagioni[0].id));
+    }
+  }, [stagioni, filtroStagionePartite]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setMioEmail((session?.user?.email || "").toLowerCase()));
@@ -693,6 +706,10 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const partitaLabel = (p) => `${p.data} · ${p.squadra_1} ${p.gol_squadra_1}-${p.gol_squadra_2} ${p.squadra_2}`;
   const partiteCountByStagione = {};
   partite.forEach((p) => { if (p.stagione_id) partiteCountByStagione[p.stagione_id] = (partiteCountByStagione[p.stagione_id] || 0) + 1; });
+  const filtroStagioneAttivo = filtroStagionePartite || "";
+  const partiteFiltrate = filtroStagioneAttivo === ""
+    ? partite
+    : partite.filter((p) => String(p.stagione_id) === filtroStagioneAttivo);
 
   return (
     <div>
@@ -709,88 +726,113 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
 
       {sezioneAdmin === "partite" && (
         <>
-          <h2>Importa da Fubles (link) — più veloce</h2>
-          <p className="season">
-            Trascina questo link nella barra dei preferiti del browser. Poi, sulla pagina di
-            una partita Fubles già disputata (con le pagelle visibili), cliccalo: copia tutto
-            in automatico, incolla qui sotto e conferma. Legge solo quello che è già a schermo,
-            un giocatore alla volta — nessuna richiesta in più verso Fubles.
-          </p>
-          <p>
-            <a className="mini" href={bookmarkletHref()} onClick={(e) => e.preventDefault()}
-              draggable="true">📥 Importa da Fubles</a>
-            <span className="season" style={{ marginLeft: 8 }}>← trascina questo nei preferiti</span>
-          </p>
-          <div className="betaform">
-            <label className="flabel">Incolla qui il testo copiato dal bottone</label>
-            <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
-              value={importRapidoText} onChange={(e) => { setImportRapidoText(e.target.value); setImportRapidoPreview(null); }} />
-            <button className="mini" style={{ marginTop: 10 }} onClick={analizzaImportRapido} disabled={!importRapidoText}>Analizza</button>
-            {importRapidoMsg && <div className="note">{importRapidoMsg}</div>}
-            {importRapidoPreview && (
-              <>
-                <div className="note">
-                  {importRapidoPreview.partita.squadra_1} {importRapidoPreview.partita.gol_squadra_1}-{importRapidoPreview.partita.gol_squadra_2} {importRapidoPreview.partita.squadra_2}
-                  {" · "}{importRapidoPreview.partita.data}
-                  {" · "}{importRapidoPreview.giocatoriNuovi.length} giocatori nuovi (per nome — verifica che non siano già in lista con un nome scritto diverso)
-                  {" · "}{importRapidoPreview.prestazioni.length} prestazioni
-                  {" · "}{importRapidoPreview.voti.length} voti
-                </div>
-                {importRapidoPreview.avvisi.map((a, i) => (
-                  <div key={i} className="note">⚠ {a}</div>
-                ))}
-                <button className="mini ok" onClick={confermaImportRapido} disabled={importRapidoBusy}>
-                  {importRapidoBusy ? "Importazione…" : "✓ Conferma import"}
-                </button>
-              </>
-            )}
-          </div>
+          <SubTabs active={partiteSubTab} onSelect={setPartiteSubTab} tabs={[
+            { key: "elenco", label: "Elenco" },
+            { key: "dati", label: `Dati & capitani${proposte.length ? ` (${proposte.length})` : ""}` },
+            { key: "importa", label: "Importa" },
+          ]} />
 
-          <h2 style={{ marginTop: 32 }}>Importa manualmente (Excel)</h2>
-          <p className="season">
-            Incolla il testo copiato dai fogli dell&apos;estrazione Fubles (seleziona le celle,
-            incluse le intestazioni, e copia/incolla qui). VOTI_RICEVUTI è opzionale.
-          </p>
-          <div className="betaform">
-            <label className="flabel">PARTITE</label>
-            <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
-              value={importPartiteText} onChange={(e) => { setImportPartiteText(e.target.value); setImportPreview(null); }} />
-            <label className="flabel">PRESTAZIONI_GIOCATORI</label>
-            <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
-              value={importPrestazioniText} onChange={(e) => { setImportPrestazioniText(e.target.value); setImportPreview(null); }} />
-            <label className="flabel">VOTI_RICEVUTI (opzionale)</label>
-            <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
-              value={importVotiText} onChange={(e) => { setImportVotiText(e.target.value); setImportPreview(null); }} />
-            <button className="mini" style={{ marginTop: 10 }} onClick={analizzaImport}
-              disabled={!importPartiteText || !importPrestazioniText}>Analizza</button>
-            {importMsg && <div className="note">{importMsg}</div>}
-            {importPreview && (
-              <>
-                <div className="note">
-                  {importPreview.parsed.partite.length - importPreview.nPartiteEsistenti} partite nuove
-                  {importPreview.nPartiteEsistenti > 0 && ` (${importPreview.nPartiteEsistenti} già presenti, saltate insieme alle relative prestazioni/voti)`}
-                  · {importPreview.nGiocatoriNuovi} giocatori nuovi
-                  · {importPreview.nPrestazioni} prestazioni
-                  · {importPreview.nVoti} voti
-                </div>
-                {importPreview.parsed.avvisi.map((a, i) => (
-                  <div key={i} className="note">⚠ {a}</div>
-                ))}
-                <button className="mini ok" onClick={confermaImport} disabled={importBusy}>
-                  {importBusy ? "Importazione…" : "✓ Conferma import"}
-                </button>
-              </>
-            )}
-          </div>
+          {partiteSubTab === "importa" && (
+            <>
+              <h2>Importa da Fubles (link) — più veloce</h2>
+              <p className="season">
+                Trascina questo link nella barra dei preferiti del browser. Poi, sulla pagina di
+                una partita Fubles già disputata (con le pagelle visibili), cliccalo: copia tutto
+                in automatico, incolla qui sotto e conferma. Legge solo quello che è già a schermo,
+                un giocatore alla volta — nessuna richiesta in più verso Fubles.
+              </p>
+              <p>
+                <a className="mini" href={bookmarkletHref()} onClick={(e) => e.preventDefault()}
+                  draggable="true">📥 Importa da Fubles</a>
+                <span className="season" style={{ marginLeft: 8 }}>← trascina questo nei preferiti</span>
+              </p>
+              <div className="betaform">
+                <label className="flabel">Incolla qui il testo copiato dal bottone</label>
+                <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+                  value={importRapidoText} onChange={(e) => { setImportRapidoText(e.target.value); setImportRapidoPreview(null); }} />
+                <button className="mini" style={{ marginTop: 10 }} onClick={analizzaImportRapido} disabled={!importRapidoText}>Analizza</button>
+                {importRapidoMsg && <div className="note">{importRapidoMsg}</div>}
+                {importRapidoPreview && (
+                  <>
+                    <div className="note">
+                      {importRapidoPreview.partita.squadra_1} {importRapidoPreview.partita.gol_squadra_1}-{importRapidoPreview.partita.gol_squadra_2} {importRapidoPreview.partita.squadra_2}
+                      {" · "}{importRapidoPreview.partita.data}
+                      {" · "}{importRapidoPreview.giocatoriNuovi.length} giocatori nuovi (per nome — verifica che non siano già in lista con un nome scritto diverso)
+                      {" · "}{importRapidoPreview.prestazioni.length} prestazioni
+                      {" · "}{importRapidoPreview.voti.length} voti
+                    </div>
+                    {importRapidoPreview.avvisi.map((a, i) => (
+                      <div key={i} className="note">⚠ {a}</div>
+                    ))}
+                    <button className="mini ok" onClick={confermaImportRapido} disabled={importRapidoBusy}>
+                      {importRapidoBusy ? "Importazione…" : "✓ Conferma import"}
+                    </button>
+                  </>
+                )}
+              </div>
 
-          <h2>Partite ({partite.length})</h2>
+              <button type="button" className="mini" style={{ marginTop: 24 }}
+                onClick={() => setMostraImportManuale((v) => !v)}>
+                {mostraImportManuale ? "▾" : "▸"} Import manuale (Excel) — se non hai il bookmarklet
+              </button>
+              {mostraImportManuale && (
+                <div className="betaform" style={{ marginTop: 10 }}>
+                  <p className="season">
+                    Incolla il testo copiato dai fogli dell&apos;estrazione Fubles (seleziona le
+                    celle, incluse le intestazioni, e copia/incolla qui). VOTI_RICEVUTI è opzionale.
+                  </p>
+                  <label className="flabel">PARTITE</label>
+                  <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+                    value={importPartiteText} onChange={(e) => { setImportPartiteText(e.target.value); setImportPreview(null); }} />
+                  <label className="flabel">PRESTAZIONI_GIOCATORI</label>
+                  <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+                    value={importPrestazioniText} onChange={(e) => { setImportPrestazioniText(e.target.value); setImportPreview(null); }} />
+                  <label className="flabel">VOTI_RICEVUTI (opzionale)</label>
+                  <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+                    value={importVotiText} onChange={(e) => { setImportVotiText(e.target.value); setImportPreview(null); }} />
+                  <button className="mini" style={{ marginTop: 10 }} onClick={analizzaImport}
+                    disabled={!importPartiteText || !importPrestazioniText}>Analizza</button>
+                  {importMsg && <div className="note">{importMsg}</div>}
+                  {importPreview && (
+                    <>
+                      <div className="note">
+                        {importPreview.parsed.partite.length - importPreview.nPartiteEsistenti} partite nuove
+                        {importPreview.nPartiteEsistenti > 0 && ` (${importPreview.nPartiteEsistenti} già presenti, saltate insieme alle relative prestazioni/voti)`}
+                        · {importPreview.nGiocatoriNuovi} giocatori nuovi
+                        · {importPreview.nPrestazioni} prestazioni
+                        · {importPreview.nVoti} voti
+                      </div>
+                      {importPreview.parsed.avvisi.map((a, i) => (
+                        <div key={i} className="note">⚠ {a}</div>
+                      ))}
+                      <button className="mini ok" onClick={confermaImport} disabled={importBusy}>
+                        {importBusy ? "Importazione…" : "✓ Conferma import"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {partiteSubTab === "elenco" && (
+            <>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <h2 style={{ margin: 0 }}>Partite ({partiteFiltrate.length})</h2>
+            <select value={filtroStagioneAttivo} onChange={(e) => setFiltroStagionePartite(e.target.value)}>
+              <option value="">Tutte le stagioni</option>
+              {stagioni.map((s) => (
+                <option key={s.id} value={s.id}>{s.nome}{partiteCountByStagione[s.id] ? ` (${partiteCountByStagione[s.id]})` : ""}</option>
+              ))}
+            </select>
+          </div>
           <div style={{ overflowX: "auto" }}>
             <table>
               <thead><tr>
                 <th>Data</th><th>Squadre</th><th>Risultato</th><th>Stagione</th><th className="num">Prestazioni</th><th>Azioni</th>
               </tr></thead>
               <tbody>
-                {partite.map((p) => modificaPartitaId === p.id ? (
+                {partiteFiltrate.map((p) => modificaPartitaId === p.id ? (
                   <tr key={p.id}>
                     <td><input type="date" value={modificaCampi.data}
                       onChange={(e) => setModificaCampi((c) => ({ ...c, data: e.target.value }))} /></td>
@@ -842,11 +884,15 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
           </div>
           {modificaPartitaId != null && (prestazioniConteggio[modificaPartitaId] || 0) > 0 && (
             <div className="note">
-              ⚠ I gol dei singoli giocatori non si aggiornano da soli — correggili nella sezione
-              "Dati partita" qui sotto se cambi il risultato.
+              ⚠ I gol dei singoli giocatori non si aggiornano da soli — correggili nel sotto-tab
+              "Dati & capitani" se cambi il risultato.
             </div>
           )}
+            </>
+          )}
 
+          {partiteSubTab === "dati" && (
+            <>
           <h2>Dati partita</h2>
           <p className="season">Assist, clean sheet, cartellini, autogol — Fubles non li espone, li inserisci tu.</p>
           <select value={partitaSelId} onChange={(e) => setPartitaSelId(e.target.value)}>
@@ -973,6 +1019,8 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                 </tbody>
               </table>
             </div>
+          )}
+            </>
           )}
         </>
       )}
