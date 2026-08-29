@@ -103,6 +103,10 @@ export async function POST(req) {
   const emails = await emailDestinatari(body.tipo, body);
   if (!emails.length) return Response.json({ inviate: 0 });
 
+  // storico in-app per la campanella: scritto per tutti i destinatari,
+  // anche chi non ha mai attivato la push del browser
+  await db.from("notifiche").insert(emails.map((email) => ({ email, titolo: msg.titolo, corpo: msg.corpo, url: msg.url })));
+
   const { data: subs } = await db.from("push_subscriptions").select("*").in("email", emails);
 
   let inviate = 0;

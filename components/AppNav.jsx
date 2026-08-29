@@ -1,6 +1,7 @@
 import { IconShield, IconBall, IconTrophy, IconJersey, IconPlayer } from "./icons";
 import SelettoreLega from "./SelettoreLega";
 import MenuAccount from "./MenuAccount";
+import NotificheBell from "./NotificheBell";
 
 const VOCI = [
   { key: "lega", label: "Lega", Icon: IconShield },
@@ -32,12 +33,14 @@ export default function AppNav({ active, onNavigate, iniziali, notifiche = {}, l
           </a>
         ))}
         <span className="tb-spacer" />
+        <NotificheBell />
         <MenuAccount iniziali={iniziali} notificaDot={notifiche.tu} />
       </nav>
 
       <nav className="mobiletopbar">
         <a className="tb-brand" href="/">Scarsi <em>League</em></a>
         <span className="tb-spacer" />
+        <NotificheBell />
         <MenuAccount iniziali={iniziali} notificaDot={notifiche.tu} />
       </nav>
       <nav className="mobilelegabar">

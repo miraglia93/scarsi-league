@@ -117,7 +117,11 @@ aperta, il resto è nel parcheggio sotto.
   `rifiuta_proposta_dati`). Tre nuovi eventi push aggiunti allo stesso
   sistema esistente (§14): capitano nominato (a chi viene assegnato),
   proposta ricevuta (al capitano bersaglio e al gestore), proposta
-  approvata/rifiutata (a chi l'ha proposta) — v1.22.0.
+  approvata/rifiutata (a chi l'ha proposta) — v1.22.0. Aggiunta anche
+  una campanella di notifiche in-app (v1.23.0, tabella `notifiche` +
+  Supabase Realtime): stesso evento della push ma sempre visibile,
+  senza bisogno di attivare nulla, con badge dal vivo (nessun refresh
+  di pagina) e link diretto al punto giusto quando ci si clicca sopra.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 

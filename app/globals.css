@@ -378,6 +378,28 @@ table select{width:auto;max-width:180px;padding:5px 8px;margin:0;font-size:13px;
   background:#E05C4B;border:1.5px solid #0B1210;}
 .notifica-dot-avatar{top:0;right:0;}
 
+.nb-hex{font-size:15px;}
+.nb-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 3px;
+  border-radius:9px;background:#E05C4B;border:1.5px solid #0B1210;color:#fff;font-size:10px;
+  font-weight:800;font-family:'Archivo';display:flex;align-items:center;justify-content:center;}
+.nb-panel{width:320px;max-height:420px;display:flex;flex-direction:column;padding:14px 0;}
+.nb-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 14px 10px;}
+.nb-marktutte{background:none;border:none;color:#E3C567;font-size:11px;font-weight:700;
+  font-family:'Archivo';cursor:pointer;padding:0;}
+.nb-list{overflow-y:auto;display:flex;flex-direction:column;}
+.nb-riga{display:flex;flex-direction:column;gap:2px;width:100%;background:none;border:none;
+  border-top:1px solid rgba(232,237,230,.08);padding:10px 14px;cursor:pointer;text-align:left;
+  font-family:'Archivo';box-sizing:border-box;}
+.nb-riga:hover{background:rgba(232,237,230,.06);}
+.nb-riga.nb-non-letta{background:rgba(227,197,103,.08);}
+.nb-titolo{color:#E8EDE6;font-size:13px;font-weight:700;}
+.nb-corpo{color:#8FA096;font-size:12px;}
+.nb-tempo{color:#8FA096;font-size:10px;margin-top:2px;}
+
+@media(max-width:719px){
+  .nb-panel{position:fixed;top:64px;left:12px;right:12px;width:auto;max-height:70vh;}
+}
+
 @media(max-width:719px){
   .navpad{padding-bottom:88px;}
   .sl-panel{position:fixed;top:110px;left:12px;right:12px;width:auto;}
