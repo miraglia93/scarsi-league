@@ -12,22 +12,28 @@ import { tradErroreDb } from "../lib/engine";
 // (applicaVotoArricchito in lib/engine.js).
 export default function VotiCapitano({ partitaId, mieSquadre, tutteLeSquadre, giocatori, mioEmail }) {
   const [righePerSquadra, setRighePerSquadra] = useState({});
+  const [votiCompagni, setVotiCompagni] = useState([]);
   const [msg, setMsg] = useState("");
   const [busyId, setBusyId] = useState(null);
 
   const squadreAltrui = tutteLeSquadre.filter((s) => !mieSquadre.includes(s));
 
   const carica = async () => {
-    if (!squadreAltrui.length) { setRighePerSquadra({}); return; }
-    const [{ data: pr }, { data: vc }] = await Promise.all([
-      supabase.from("prestazioni").select("giocatore_id, ruolo, squadra").eq("partita_id", partitaId).in("squadra", squadreAltrui),
+    const [{ data: vc }, { data: prAltrui }, { data: prPropria }] = await Promise.all([
       supabase.from("voti_capitano").select("*").eq("partita_id", partitaId),
+      squadreAltrui.length
+        ? supabase.from("prestazioni").select("giocatore_id, ruolo, squadra").eq("partita_id", partitaId).in("squadra", squadreAltrui)
+        : Promise.resolve({ data: [] }),
+      mieSquadre.length
+        ? supabase.from("prestazioni").select("giocatore_id").eq("partita_id", partitaId).in("squadra", mieSquadre)
+        : Promise.resolve({ data: [] }),
     ]);
+
     const votoByGiocatore = {};
     (vc || []).forEach((v) => { votoByGiocatore[v.giocatore_id] = v.voto; });
     const perSquadra = {};
     squadreAltrui.forEach((s) => { perSquadra[s] = []; });
-    (pr || []).forEach((p) => {
+    (prAltrui || []).forEach((p) => {
       const g = giocatori[p.giocatore_id];
       (perSquadra[p.squadra] ||= []).push({
         giocatore_id: p.giocatore_id,
@@ -38,6 +44,12 @@ export default function VotiCapitano({ partitaId, mieSquadre, tutteLeSquadre, gi
     });
     Object.values(perSquadra).forEach((arr) => arr.sort((a, b) => a.nome.localeCompare(b.nome)));
     setRighePerSquadra(perSquadra);
+
+    const idsPropria = (prPropria || []).map((p) => p.giocatore_id);
+    const { data: vr } = idsPropria.length
+      ? await supabase.from("voti_ricevuti").select("*").eq("partita_id", partitaId).in("votante_id", idsPropria)
+      : { data: [] };
+    setVotiCompagni(vr || []);
   };
 
   useEffect(() => { carica(); }, [partitaId, mieSquadre.join(","), tutteLeSquadre.join(",")]);
@@ -58,7 +70,35 @@ export default function VotiCapitano({ partitaId, mieSquadre, tutteLeSquadre, gi
     setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Voto salvato");
   };
 
-  if (!squadreAltrui.length) return null;
+  const escludiVoto = async (id) => {
+    setBusyId(`v${id}`); setMsg("");
+    const { error } = await supabase.from("voti_ricevuti").update({ anomalo: true }).eq("id", id);
+    setBusyId(null);
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Voto escluso");
+    carica();
+  };
+
+  const ripristinaVoto = async (id) => {
+    setBusyId(`v${id}`); setMsg("");
+    const { error } = await supabase.from("voti_ricevuti").update({ anomalo: false }).eq("id", id);
+    setBusyId(null);
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Voto ripristinato");
+    carica();
+  };
+
+  const escludiTuttiDiVotante = async (votanteId) => {
+    setBusyId(`t${votanteId}`); setMsg("");
+    const { error } = await supabase.from("voti_ricevuti").update({ anomalo: true })
+      .eq("partita_id", partitaId).eq("votante_id", votanteId);
+    setBusyId(null);
+    setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Voti esclusi");
+    carica();
+  };
+
+  const votiCompagniPerVotante = {};
+  votiCompagni.forEach((v) => { (votiCompagniPerVotante[v.votante_id] ||= []).push(v); });
+
+  if (!squadreAltrui.length && !mieSquadre.length) return null;
 
   return (
     <div style={{ marginTop: 24 }}>
@@ -93,6 +133,56 @@ export default function VotiCapitano({ partitaId, mieSquadre, tutteLeSquadre, gi
           </div>
         );
       })}
+
+      {Object.keys(votiCompagniPerVotante).length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <h3>Voti dei tuoi compagni</h3>
+          <p className="season">
+            Se un compagno ha votato a caso (es. 6.5 a tutti), puoi escludere i suoi voti da
+            questa partita — non tocca le sue presenze, gol o altre statistiche, solo
+            l'affidabilità di questi voti specifici.
+          </p>
+          {Object.entries(votiCompagniPerVotante).map(([votanteId, righe]) => {
+            const nomeVotante = giocatori[votanteId]?.nickname || giocatori[votanteId]?.nome || `#${votanteId}`;
+            const qualcunoValido = righe.some((r) => !r.anomalo);
+            return (
+              <div key={votanteId} style={{ marginTop: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <b className="pname">{nomeVotante}</b>
+                  {qualcunoValido && (
+                    <button className="mini no" disabled={busyId === `t${votanteId}`}
+                      onClick={() => escludiTuttiDiVotante(Number(votanteId))}>
+                      Escludi tutti i voti di {nomeVotante} in questa partita
+                    </button>
+                  )}
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table>
+                    <thead><tr><th>Ha votato</th><th className="num">Voto</th><th>Stato</th><th></th></tr></thead>
+                    <tbody>
+                      {righe.map((v) => (
+                        <tr key={v.id}>
+                          <td className="pname">{giocatori[v.valutato_id]?.nickname || giocatori[v.valutato_id]?.nome || `#${v.valutato_id}`}</td>
+                          <td className="num">{v.voto}</td>
+                          <td>{v.anomalo ? "❌ escluso" : "✅ valido"}</td>
+                          <td>
+                            {v.anomalo ? (
+                              <button className="mini" disabled={busyId === `v${v.id}`} onClick={() => ripristinaVoto(v.id)}>Ripristina</button>
+                            ) : (
+                              <button className="mini no" disabled={busyId === `v${v.id}`} onClick={() => escludiVoto(v.id)}>Escludi questo voto</button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {msg && <div className="note">{msg}</div>}
     </div>
   );

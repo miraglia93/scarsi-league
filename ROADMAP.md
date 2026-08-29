@@ -165,6 +165,14 @@ aperta, il resto è nel parcheggio sotto.
   alto invece del flag `motm` di Fubles, quando i capitani hanno votato
   quella partita). Nessun effetto su partite/stagioni senza capitani —
   lo storico importato resta identico.
+- **Voto arricchito dei capitani, FASE C (v1.27.0)**: chiude il piano a
+  tre fasi. Il capitano vede ora, per la propria squadra, i voti che i
+  compagni hanno dato in questa partita — raggruppati per chi ha
+  votato, per far risaltare subito un pattern pigro (es. 6.5 a tutti).
+  Due azioni: escludere tutti i voti di un compagno in blocco
+  (suggerita) o un voto singolo, entrambe reversibili ("Ripristina").
+  Nessuna nuova migrazione: usa la RLS di moderazione e il ricalcolo
+  già introdotti in FASE A/B.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 
