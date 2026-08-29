@@ -20,6 +20,11 @@ export default function NotificheBell() {
   const [notifiche, setNotifiche] = useState([]);
   const [aperto, setAperto] = useState(false);
   const ref = useRef(null);
+  // AppNav monta questo componente due volte (topbar desktop + mobile):
+  // un id univoco per istanza evita che i due canali Realtime collidano
+  // sullo stesso topic (Supabase rifiuta un secondo .on() su un canale
+  // già sottoscritto con lo stesso nome)
+  const instanceId = useRef(Math.random().toString(36).slice(2));
 
   const carica = async (mail) => {
     const { data } = await supabase.from("notifiche").select("*")
@@ -38,7 +43,7 @@ export default function NotificheBell() {
 
   useEffect(() => {
     if (!email) return;
-    const channel = supabase.channel(`notifiche-${email}`)
+    const channel = supabase.channel(`notifiche-${email}-${instanceId.current}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifiche", filter: `email=eq.${email}` },
         (payload) => setNotifiche((n) => [payload.new, ...n].slice(0, 20)))
       .subscribe();
