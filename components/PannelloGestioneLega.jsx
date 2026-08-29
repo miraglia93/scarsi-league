@@ -592,6 +592,9 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     const { error } = await supabase.from("stagioni").update({
       nome: mod.nome ?? s.nome,
       fine: mod.fine !== undefined ? (mod.fine || null) : s.fine,
+      peso_voto_capitano: mod.peso_voto_capitano !== undefined
+        ? (mod.peso_voto_capitano === "" ? null : Number(mod.peso_voto_capitano))
+        : s.peso_voto_capitano,
     }).eq("id", s.id);
     setStagioneBusy(null);
     setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Stagione aggiornata");
@@ -1140,10 +1143,16 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
           )}
 
           <h2 style={{ marginTop: 32 }}>Stagioni ({stagioni.length})</h2>
+          <p className="season">
+            "Peso voto capitano" (vuoto = disattivato): quanto conta il voto che un capitano dà
+            ai giocatori della squadra avversaria rispetto a un voto normale — es. 3 = pesa come
+            3 voti normali. Attivalo solo se in questa stagione usi i capitani.
+          </p>
           <div style={{ overflowX: "auto" }}>
             <table>
               <thead><tr>
-                <th>Nome</th><th>Inizio</th><th>Fine</th><th>Stato</th><th className="num">Partite</th><th>Azioni</th>
+                <th>Nome</th><th>Inizio</th><th>Fine</th><th>Stato</th><th className="num">Partite</th>
+                <th className="num">Peso voto capitano</th><th>Azioni</th>
               </tr></thead>
               <tbody>
                 {stagioni.map((s) => {
@@ -1159,6 +1168,11 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                         onChange={(e) => modificaStagioneCampo(s.id, "fine", e.target.value)} /></td>
                       <td>{s.attiva ? "🟢 attiva" : "conclusa"}</td>
                       <td className="num">{nPartite}</td>
+                      <td className="num">
+                        <input type="number" min="0" step="1" style={{ width: 56 }} placeholder="off"
+                          value={mod.peso_voto_capitano ?? s.peso_voto_capitano ?? ""}
+                          onChange={(e) => modificaStagioneCampo(s.id, "peso_voto_capitano", e.target.value)} />
+                      </td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         <button className="mini ok" disabled={busy || !stagioneModifiche[s.id]} onClick={() => salvaStagione(s)}>💾</button>{" "}
                         {!s.attiva && <button className="mini" disabled={busy} onClick={() => impostaAttiva(s)}>Imposta attiva</button>}{" "}

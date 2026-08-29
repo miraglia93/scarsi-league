@@ -143,6 +143,19 @@ aperta, il resto è nel parcheggio sotto.
   "vista da gestore" (stessi componenti reali usati dai capitani, non
   una finta anteprima), lasciando fuori solo il modulo di proposta
   incrociata riservato a chi è davvero nominato.
+- **Voto arricchito dei capitani, FASE A (v1.25.0)**: primo pezzo di un
+  piano a tre fasi. I capitani potranno votare i giocatori della
+  squadra AVVERSARIA (mai i propri compagni, per imparzialità) e
+  moderare i voti "pigri" dei propri compagni (es. 6.5 a tutti, un
+  pattern comune su Fubles) — usando i voti individuali che Fubles
+  espone e che noi già importiamo in `voti_ricevuti` ma non abbiamo mai
+  mostrato partita per partita. Il voto Fubles resta sempre il numero
+  di base, sempre disponibile anche sullo storico importato da nuove
+  leghe (che non ha mai avuto capitani) — il voto arricchito si applica
+  solo dove esiste, con un peso configurabile PER STAGIONE dal gestore
+  (mai obbligatorio). In questa fase solo l'infrastruttura: colonna
+  `stagioni.peso_voto_capitano` e tabella `voti_capitano`, nessun
+  effetto ancora visibile sui voti — arriva in FASE B.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 
