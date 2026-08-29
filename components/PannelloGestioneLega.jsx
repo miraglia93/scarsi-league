@@ -158,13 +158,17 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
 
   useEffect(() => { carica(); }, [legaId]);
 
-  // filtro "Elenco partite" pre-impostato sulla stagione più recente al
-  // primo caricamento, senza sovrascrivere una scelta successiva dell'utente
+  // filtro "Elenco partite" pre-impostato sulla stagione più recente CHE
+  // HA partite (non sulla più recente in assoluto, che può essere quella
+  // futura ancora vuota) — senza sovrascrivere una scelta dell'utente
   useEffect(() => {
     if (filtroStagionePartite === null && stagioni.length) {
-      setFiltroStagionePartite(String(stagioni[0].id));
+      const conteggio = {};
+      partite.forEach((p) => { if (p.stagione_id) conteggio[p.stagione_id] = (conteggio[p.stagione_id] || 0) + 1; });
+      const conPartite = stagioni.find((s) => conteggio[s.id] > 0);
+      setFiltroStagionePartite(conPartite ? String(conPartite.id) : "");
     }
-  }, [stagioni, filtroStagionePartite]);
+  }, [stagioni, partite, filtroStagionePartite]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setMioEmail((session?.user?.email || "").toLowerCase()));
