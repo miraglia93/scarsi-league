@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
-import { fmtData, iniziali, tradErroreDb, applicaNomiRegistrati } from "../../../lib/engine";
+import { fmtData, iniziali, tradErroreDb, applicaNomiRegistrati, applicaVotoArricchito } from "../../../lib/engine";
 import AppNav from "../../../components/AppNav";
 import CopyButton from "../../../components/CopyButton";
 import RecapImageButton from "../../../components/RecapImageButton";
@@ -11,6 +11,7 @@ import SubTabs from "../../../components/SubTabs";
 import CommentiPartita from "../../../components/CommentiPartita";
 import CapitanoSquadra from "../../../components/CapitanoSquadra";
 import ProposteIncrociate from "../../../components/ProposteIncrociate";
+import VotiCapitano from "../../../components/VotiCapitano";
 
 function RigaFormazione({ p }) {
   return (
@@ -72,6 +73,7 @@ export default function Partita() {
   const [mioEmail, setMioEmail] = useState("");
   const [sonoGestore, setSonoGestore] = useState(false);
   const [mieSquadreCapitano, setMieSquadreCapitano] = useState([]);
+  const [haVotoCapitano, setHaVotoCapitano] = useState(false);
   const [giocatoriMap, setGiocatoriMap] = useState({});
 
   useEffect(() => {
@@ -119,16 +121,28 @@ export default function Partita() {
       const { data: cap } = await supabase.from("capitani_partita").select("squadra").eq("partita_id", id).eq("email", mail);
       setMieSquadreCapitano((cap || []).map((c) => c.squadra));
 
+      const [{ data: vr }, { data: vc }, { data: stag }] = await Promise.all([
+        supabase.from("voti_ricevuti").select("*").eq("partita_id", id),
+        supabase.from("voti_capitano").select("*").eq("partita_id", id),
+        p.stagione_id ? supabase.from("stagioni").select("id, peso_voto_capitano").eq("id", p.stagione_id) : Promise.resolve({ data: [] }),
+      ]);
+      setHaVotoCapitano(!!(vc || []).length);
+
+      const prArricchite = applicaVotoArricchito(pr || [], vr || [], vc || [], [p], stag || []);
+      const votoById = {};
+      prArricchite.forEach((r) => { votoById[r.giocatore_id] = r.voto; });
+
       setRighe((pr || []).map((r) => {
         const g = giocMap[r.giocatore_id];
         const d = dmMap[r.giocatore_id];
+        const voto = votoById[r.giocatore_id];
         return {
           ...r,
           nome: g?.nome || "Giocatore",
           nickname: g?.nickname,
           foto_url: g?.foto_url,
           ruolo: r.ruolo || g?.ruolo_prevalente || "—",
-          voto: r.voto == null ? null : Number(r.voto),
+          voto: voto == null ? null : Number(voto),
           gol: d?.gol_manuale != null ? d.gol_manuale : r.gol,
           assist: d?.assist || 0,
           clean_sheet: !!d?.clean_sheet,
@@ -185,7 +199,11 @@ export default function Partita() {
   const perSquadra = (nome) =>
     righe.filter((r) => r.squadra === nome).sort((a, b) => (b.voto ?? -1) - (a.voto ?? -1));
 
-  const mvp = righe.find((r) => r.motm);
+  // se i capitani hanno votato questa partita, l'MVP segue il voto (già
+  // arricchito) più alto invece del flag motm importato da Fubles
+  const mvp = haVotoCapitano
+    ? [...righe].filter((r) => r.voto != null).sort((a, b) => b.voto - a.voto)[0]
+    : righe.find((r) => r.motm);
   const migliorVoto = [...righe].filter((r) => r.voto != null).sort((a, b) => b.voto - a.voto)[0];
   const peggiorVoto = [...righe].filter((r) => r.voto != null).sort((a, b) => a.voto - b.voto)[0];
   const capocannoniereMatch = [...righe].filter((r) => r.gol > 0).sort((a, b) => b.gol - a.gol)[0];
@@ -295,23 +313,31 @@ export default function Partita() {
           ) : (
             <div className="note" style={{ marginTop: 16 }}>
               👁 Vista da gestore: qui sotto vedi e puoi modificare esattamente quello che vede
-              un capitano per ciascuna squadra (non vedi invece il modulo "proponi per l'altra
-              squadra", riservato a chi è davvero nominato capitano — le proposte le gestisci
-              comunque dal pannello admin).
+              un capitano per ciascuna squadra (non vedi invece i moduli "proponi per l'altra
+              squadra" e "vota gli avversari", riservati a chi è davvero nominato capitano — li
+              gestisci comunque dal pannello admin).
             </div>
           )}
           {(mieSquadreCapitano.length ? mieSquadreCapitano : squadre).map((squadra) => (
             <CapitanoSquadra key={squadra} partitaId={id} squadra={squadra} giocatori={giocatoriMap} />
           ))}
           {mieSquadreCapitano.length > 0 && (
-            <ProposteIncrociate
-              partitaId={id}
-              mioEmail={mioEmail}
-              mieSquadre={mieSquadreCapitano}
-              tutteLeSquadre={squadre}
-              giocatori={giocatoriMap}
-              legaId={partita.lega_id}
-            />
+            <>
+              <VotiCapitano
+                partitaId={id}
+                mieSquadre={mieSquadreCapitano}
+                tutteLeSquadre={squadre}
+                giocatori={giocatoriMap}
+              />
+              <ProposteIncrociate
+                partitaId={id}
+                mioEmail={mioEmail}
+                mieSquadre={mieSquadreCapitano}
+                tutteLeSquadre={squadre}
+                giocatori={giocatoriMap}
+                legaId={partita.lega_id}
+              />
+            </>
           )}
         </>
       )}

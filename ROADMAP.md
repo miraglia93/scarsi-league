@@ -156,6 +156,15 @@ aperta, il resto è nel parcheggio sotto.
   (mai obbligatorio). In questa fase solo l'infrastruttura: colonna
   `stagioni.peso_voto_capitano` e tabella `voti_capitano`, nessun
   effetto ancora visibile sui voti — arriva in FASE B.
+- **Voto arricchito dei capitani, FASE B (v1.26.0)**: i capitani ora
+  votano davvero i giocatori della squadra avversaria (nuovo modulo
+  "Vota gli avversari" sul tab Squadra, salvataggio diretto senza
+  approvazione — è un giudizio, non una correzione di un fatto). Dove
+  attivo, il voto arricchito sostituisce quello Fubles ovunque: media,
+  overall della carta, e l'MVP della partita (che ora segue il voto più
+  alto invece del flag `motm` di Fubles, quando i capitani hanno votato
+  quella partita). Nessun effetto su partite/stagioni senza capitani —
+  lo storico importato resta identico.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 

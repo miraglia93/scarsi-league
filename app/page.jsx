@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth, distribuzioneVoti, computeAndamento, computeXP, computeLivello, tradErroreDb, applicaNomiRegistrati, applicaGolManuali } from "../lib/engine";
+import { assemble, buildStats, pairAndNemesis, bestPartner, worstNemesis, fanCritic, buildTOTW, computeBadges, computePlayerOfTheMonth, distribuzioneVoti, computeAndamento, computeXP, computeLivello, tradErroreDb, applicaNomiRegistrati, applicaGolManuali, applicaVotoArricchito } from "../lib/engine";
 import PlayerCard from "../components/PlayerCard";
 import FormaDots from "../components/FormaDots";
 import MiniTable from "../components/MiniTable";
@@ -629,7 +629,7 @@ export default function Home() {
       if (!mie || !mie.length) { setAutorizzato(false); return; }
       setAutorizzato(true);
       setMieMembri(mie);
-      const [pa, gi, pr, vo, le, st, dm, pre] = await Promise.all([
+      const [pa, gi, pr, vo, le, st, dm, pre, vc] = await Promise.all([
         supabase.from("partite").select("*"),
         supabase.from("giocatori").select("*"),
         supabase.from("prestazioni").select("*"),
@@ -638,6 +638,7 @@ export default function Home() {
         supabase.from("stagioni").select("*").order("inizio", { ascending: false }),
         supabase.from("dati_manuali").select("*"),
         supabase.from("premi").select("*"),
+        supabase.from("voti_capitano").select("*"),
       ]);
       const err = pa.error || gi.error || pr.error || vo.error;
       if (err) { setErrore(tradErroreDb(err.message)); return; }
@@ -647,7 +648,7 @@ export default function Home() {
       const ultima = Number(localStorage.getItem("sl_ultima_lega"));
       const valida = mie.some((m) => m.lega_id === ultima);
       setLegaId(valida ? ultima : mie[0].lega_id);
-      setRaw({ pa: pa.data, gi: gi.data, pr: pr.data, vo: vo.data, st: st.data || [], dm: dm.data || [], premi: pre.data || [] });
+      setRaw({ pa: pa.data, gi: gi.data, pr: pr.data, vo: vo.data, st: st.data || [], dm: dm.data || [], premi: pre.data || [], vc: vc.data || [] });
     })();
   }, [session]);
 
@@ -750,13 +751,15 @@ export default function Home() {
     const pr = raw.pr.filter((p) => paIds.has(p.partita_id));
     const vo = raw.vo.filter((v) => paIds.has(v.partita_id));
     const dm = raw.dm.filter((d) => paIds.has(d.partita_id));
+    const vc = raw.vc.filter((v) => paIds.has(v.partita_id));
     // i premi "partita" hanno solo partita_id (stagione_id null): risolti tramite paIds,
     // stesso set già usato per prestazioni/voti/dati_manuali qui sopra
     const premi = raw.premi.filter((p) => p.lega_id === legaId && (
       stagioneSel === "all" || p.stagione_id === stagioneSel || (p.partita_id != null && paIds.has(p.partita_id))
     ));
     if (!pa.length) return { P: {}, matches: [], votes: [], dm: [], premi: [], vuota: true };
-    return { ...assemble(pa, giocatoriLega, applicaGolManuali(pr, dm), vo), dm, premi };
+    const prArricchite = applicaVotoArricchito(applicaGolManuali(pr, dm), vo, vc, pa, raw.st);
+    return { ...assemble(pa, giocatoriLega, prArricchite, vo, vc), dm, premi };
   }, [raw, legaId, stagioneSel, giocatoriLega]);
   const S = useMemo(() => (data && !data.vuota ? buildStats(data.P, data.matches) : null), [data]);
   const rel = useMemo(() => (data ? pairAndNemesis(data.matches) : null), [data]);
@@ -770,7 +773,9 @@ export default function Home() {
     const pr = raw.pr.filter((p) => paIds.has(p.partita_id));
     const vo = raw.vo.filter((v) => paIds.has(v.partita_id));
     const dm = raw.dm.filter((d) => paIds.has(d.partita_id));
-    return assemble(pa, giocatoriLega, applicaGolManuali(pr, dm), vo);
+    const vc = raw.vc.filter((v) => paIds.has(v.partita_id));
+    const prArricchite = applicaVotoArricchito(applicaGolManuali(pr, dm), vo, vc, pa, raw.st);
+    return assemble(pa, giocatoriLega, prArricchite, vo, vc);
   }, [raw, legaId, giocatoriLega]);
   const SAllTime = useMemo(() => (dataAllTime ? buildStats(dataAllTime.P, dataAllTime.matches) : null), [dataAllTime]);
   const dmAllTimeByChiave = useMemo(() => {

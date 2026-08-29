@@ -1,7 +1,7 @@
 import { test, assert, assertEqual, assertVicino, riepilogo } from "./_assert.mjs";
 import {
   assemble, buildStats, computeXP, computeLivello, computeBadges, buildTOTW, tradErroreDb, cardStats,
-  applicaNomiRegistrati, applicaGolManuali,
+  applicaNomiRegistrati, applicaGolManuali, applicaVotoArricchito,
 } from "../lib/engine.js";
 
 /* dataset sintetico: 4 giocatori, 2 partite, coerente con le forme delle
@@ -167,6 +167,53 @@ test("applicaGolManuali: nessuna correzione manuale lascia le prestazioni invari
   const prestazioni = [{ partita_id: 1, giocatore_id: 1, gol: 2 }];
   assertEqual(applicaGolManuali(prestazioni, []), prestazioni);
   assertEqual(applicaGolManuali(prestazioni, [{ partita_id: 1, giocatore_id: 1, gol_manuale: null }]), prestazioni);
+});
+
+/* dataset per applicaVotoArricchito: partita 201 in una stagione con
+   peso impostato (10), partita 202 in una stagione SENZA peso */
+const stagioniVoto = [
+  { id: 1, peso_voto_capitano: 3 },
+  { id: 2, peso_voto_capitano: null },
+];
+const partiteVoto = [
+  { id: 201, stagione_id: 1 },
+  { id: 202, stagione_id: 2 },
+];
+
+test("applicaVotoArricchito: il voto del capitano pesa nella media e sposta il risultato", () => {
+  const prestazioni = [{ partita_id: 201, giocatore_id: 1, voto: 6 }];
+  const votiRicevuti = [
+    { partita_id: 201, valutato_id: 1, votante_id: 9, voto: 6, anomalo: false },
+    { partita_id: 201, valutato_id: 1, votante_id: 10, voto: 6, anomalo: false },
+  ];
+  const votiCapitano = [{ partita_id: 201, giocatore_id: 1, voto: 10 }];
+  const risultato = applicaVotoArricchito(prestazioni, votiRicevuti, votiCapitano, partiteVoto, stagioniVoto);
+  const r = risultato.find((x) => x.giocatore_id === 1);
+  // media pulita = 6, voto capitano = 10, peso 3 -> (6 + 3*10)/4 = 9
+  assertVicino(r.voto, 9, 0.001);
+  assertEqual(r.voto_fubles, 6, "il voto Fubles originale resta accessibile per trasparenza");
+});
+
+test("applicaVotoArricchito: escludere un voto pigro cambia la media anche senza voto capitano", () => {
+  const prestazioni = [{ partita_id: 201, giocatore_id: 1, voto: 6 }];
+  const votiRicevuti = [
+    { partita_id: 201, valutato_id: 1, votante_id: 9, voto: 8, anomalo: false },
+    { partita_id: 201, valutato_id: 1, votante_id: 10, voto: 4, anomalo: true }, // escluso dal capitano
+  ];
+  const risultato = applicaVotoArricchito(prestazioni, votiRicevuti, [], partiteVoto, stagioniVoto);
+  assertVicino(risultato.find((x) => x.giocatore_id === 1).voto, 8, 0.001);
+});
+
+test("applicaVotoArricchito: una partita di una stagione senza peso resta identica", () => {
+  const prestazioni = [{ partita_id: 202, giocatore_id: 1, voto: 6 }];
+  const votiCapitano = [{ partita_id: 202, giocatore_id: 1, voto: 10 }];
+  assertEqual(applicaVotoArricchito(prestazioni, [], votiCapitano, partiteVoto, stagioniVoto), prestazioni);
+});
+
+test("applicaVotoArricchito: nessun voto capitano e nessuna esclusione lascia il voto Fubles invariato", () => {
+  const prestazioni = [{ partita_id: 201, giocatore_id: 1, voto: 6 }];
+  const votiRicevuti = [{ partita_id: 201, valutato_id: 1, votante_id: 9, voto: 8, anomalo: false }];
+  assertEqual(applicaVotoArricchito(prestazioni, votiRicevuti, [], partiteVoto, stagioniVoto), prestazioni);
 });
 
 export const ok = riepilogo("engine.test.mjs");
