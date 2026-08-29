@@ -133,6 +133,16 @@ aperta, il resto è nel parcheggio sotto.
   spezzata in tre sotto-tab — Elenco / Dati & capitani / Importa —
   con un filtro per stagione sull'elenco partite (pre-impostato sulla
   più recente) invece dell'unica lunga lista di tutte le stagioni.
+- **v1.24.1**: due rifiniture emerse testando il pannello a mano. La
+  tabella "Dati partita" mescolava i giocatori di entrambe le squadre
+  senza indicarlo — aggiunta la colonna "Squadra" e raggruppamento in
+  ordine. Chi gestisce la lega non aveva modo di vedere cosa vede
+  davvero un capitano senza usare un secondo account: ora, se non sei
+  tu stesso capitano di quella partita, il sotto-tab "Squadra" della
+  pagina partita ti mostra comunque entrambe le squadre in modalità
+  "vista da gestore" (stessi componenti reali usati dai capitani, non
+  una finta anteprima), lasciando fuori solo il modulo di proposta
+  incrociata riservato a chi è davvero nominato.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 

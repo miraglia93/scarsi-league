@@ -263,7 +263,7 @@ export default function Partita() {
       <SubTabs active={tab} onSelect={setTab} tabs={[
         { key: "formazioni", label: "Formazioni" },
         { key: "commenti", label: "Commenti" },
-        ...(mieSquadreCapitano.length ? [{ key: "squadra", label: "Squadra" }] : []),
+        ...(mieSquadreCapitano.length || sonoGestore ? [{ key: "squadra", label: "Squadra" }] : []),
       ]} />
 
       {tab === "formazioni" && (
@@ -288,20 +288,31 @@ export default function Partita() {
 
       {tab === "squadra" && (
         <>
-          <p className="season" style={{ marginTop: 16 }}>
-            Sei capitano — inserisci marcatori, assist e cartellini per la tua squadra.
-          </p>
-          {mieSquadreCapitano.map((squadra) => (
+          {mieSquadreCapitano.length > 0 ? (
+            <p className="season" style={{ marginTop: 16 }}>
+              Sei capitano — inserisci marcatori, assist e cartellini per la tua squadra.
+            </p>
+          ) : (
+            <div className="note" style={{ marginTop: 16 }}>
+              👁 Vista da gestore: qui sotto vedi e puoi modificare esattamente quello che vede
+              un capitano per ciascuna squadra (non vedi invece il modulo "proponi per l'altra
+              squadra", riservato a chi è davvero nominato capitano — le proposte le gestisci
+              comunque dal pannello admin).
+            </div>
+          )}
+          {(mieSquadreCapitano.length ? mieSquadreCapitano : squadre).map((squadra) => (
             <CapitanoSquadra key={squadra} partitaId={id} squadra={squadra} giocatori={giocatoriMap} />
           ))}
-          <ProposteIncrociate
-            partitaId={id}
-            mioEmail={mioEmail}
-            mieSquadre={mieSquadreCapitano}
-            tutteLeSquadre={squadre}
-            giocatori={giocatoriMap}
-            legaId={partita.lega_id}
-          />
+          {mieSquadreCapitano.length > 0 && (
+            <ProposteIncrociate
+              partitaId={id}
+              mioEmail={mioEmail}
+              mieSquadre={mieSquadreCapitano}
+              tutteLeSquadre={squadre}
+              giocatori={giocatoriMap}
+              legaId={partita.lega_id}
+            />
+          )}
         </>
       )}
       </div>

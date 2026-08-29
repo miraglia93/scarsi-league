@@ -204,7 +204,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
           autogol: esistente?.autogol ?? 0,
           note: esistente?.note ?? "",
         };
-      }).sort((a, b) => a.nome.localeCompare(b.nome));
+      }).sort((a, b) => a.squadra.localeCompare(b.squadra) || a.nome.localeCompare(b.nome));
       setDatiRighe(righe);
       const capMap = {};
       (cap || []).forEach((c) => { capMap[c.squadra] = c.email; });
@@ -939,13 +939,14 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                 <div style={{ overflowX: "auto" }}>
                   <table>
                     <thead><tr>
-                      <th>Giocatore</th><th>Ruolo</th><th className="num">Gol</th><th className="num">Assist</th><th className="num">Clean sheet</th>
+                      <th>Giocatore</th><th>Squadra</th><th>Ruolo</th><th className="num">Gol</th><th className="num">Assist</th><th className="num">Clean sheet</th>
                       <th className="num">Gol subiti</th><th className="num">Cartellini</th><th className="num">Autogol</th><th>Note</th>
                     </tr></thead>
                     <tbody>
                       {datiRighe.map((r) => (
                         <tr key={r.giocatore_id}>
                           <td className="pname">{r.nome}</td>
+                          <td>{r.squadra}</td>
                           <td>{r.ruolo}</td>
                           <td className="num">
                             <input type="number" min="0" style={{ width: 56 }} value={r.gol_manuale}
