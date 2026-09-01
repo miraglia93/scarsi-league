@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
-import { fmtData, iniziali, tradErroreDb, applicaNomiRegistrati, applicaVotoArricchito } from "../../../lib/engine";
+import { fmtData, iniziali, tradErroreDb, applicaNomiRegistrati, applicaVotoArricchito, calcolaPunteggioLive } from "../../../lib/engine";
 import AppNav from "../../../components/AppNav";
 import CopyButton from "../../../components/CopyButton";
 import RecapImageButton from "../../../components/RecapImageButton";
@@ -12,6 +12,7 @@ import CommentiPartita from "../../../components/CommentiPartita";
 import CapitanoSquadra from "../../../components/CapitanoSquadra";
 import ProposteIncrociate from "../../../components/ProposteIncrociate";
 import VotiCapitano from "../../../components/VotiCapitano";
+import LiveCronista from "../../../components/LiveCronista";
 
 function RigaFormazione({ p }) {
   return (
@@ -75,6 +76,9 @@ export default function Partita() {
   const [mieSquadreCapitano, setMieSquadreCapitano] = useState([]);
   const [haVotoCapitano, setHaVotoCapitano] = useState(false);
   const [giocatoriMap, setGiocatoriMap] = useState({});
+  const [sonoCronista, setSonoCronista] = useState(false);
+  const [prestazioniRaw, setPrestazioniRaw] = useState([]);
+  const [datiManualiRaw, setDatiManualiRaw] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -105,6 +109,13 @@ export default function Partita() {
       const { data: dm } = await supabase.from("dati_manuali").select("*").eq("partita_id", id);
       const dmMap = {};
       (dm || []).forEach((d) => { dmMap[d.giocatore_id] = d; });
+      setPrestazioniRaw(pr || []);
+      setDatiManualiRaw(dm || []);
+
+      if (p.stato_live) {
+        const { data: cr } = await supabase.from("cronisti_partita").select("email").eq("partita_id", id).eq("email", mail);
+        setSonoCronista(!!(cr || []).length);
+      }
 
       const { data: pre } = await supabase.from("premi").select("*").eq("partita_id", id);
       setPremiPartita(pre || []);
@@ -193,7 +204,10 @@ export default function Partita() {
   if (stato === "non-trovata") return <div className="centered">Partita non trovata. <a className="plink" href="/">← Torna a Scarsi League</a></div>;
 
   const squadre = [partita.squadra_1, partita.squadra_2];
-  const gol = [partita.gol_squadra_1, partita.gol_squadra_2];
+  const punteggioLive = partita.stato_live ? calcolaPunteggioLive(prestazioniRaw, datiManualiRaw) : null;
+  const gol = punteggioLive
+    ? [punteggioLive[squadre[0]] || 0, punteggioLive[squadre[1]] || 0]
+    : [partita.gol_squadra_1, partita.gol_squadra_2];
   const forza = [partita.forza_squadra_1, partita.forza_squadra_2];
 
   const perSquadra = (nome) =>
@@ -231,6 +245,7 @@ export default function Partita() {
         </div>
 
       <section className="hero" style={{ marginTop: 20 }}>
+        {partita.stato_live === "in_corso" && <div className="note" style={{ color: "#E05C4B", fontWeight: 700 }}>🔴 IN DIRETTA</div>}
         <span className="lbl">{fmtData(partita.data, { year: true })}{partita.struttura ? ` · ${partita.struttura}` : ""}</span>
         <div className="team"><b>{squadre[0]}</b>{forza[0] != null && <span>forza {forza[0]}</span>}</div>
         <div className="score">{gol[0]}<span>–</span>{gol[1]}</div>
@@ -282,6 +297,7 @@ export default function Partita() {
         { key: "formazioni", label: "Formazioni" },
         { key: "commenti", label: "Commenti" },
         ...(mieSquadreCapitano.length || sonoGestore ? [{ key: "squadra", label: "Squadra" }] : []),
+        ...(sonoCronista ? [{ key: "live", label: "🔴 Live" }] : []),
       ]} />
 
       {tab === "formazioni" && (
@@ -340,6 +356,24 @@ export default function Partita() {
               />
             </>
           )}
+        </>
+      )}
+
+      {tab === "live" && (
+        <>
+          <h2>🔴 Live</h2>
+          <p className="season" style={{ marginTop: 4 }}>
+            Sei il cronista di questa partita — ogni tocco salva subito, ha la priorità sull'import Fubles di fine partita.
+          </p>
+          <LiveCronista
+            partitaId={id}
+            squadre={squadre}
+            giocatori={giocatoriMap}
+            onChange={async () => {
+              const { data: dm } = await supabase.from("dati_manuali").select("*").eq("partita_id", id);
+              setDatiManualiRaw(dm || []);
+            }}
+          />
         </>
       )}
       </div>

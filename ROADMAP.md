@@ -187,6 +187,23 @@ aperta, il resto è nel parcheggio sotto.
   `dati_manuali`, che l'import Fubles post-partita non tocca mai:
   la priorità "live prima di Fubles, sempre rivedibile dall'admin"
   richiesta arriva gratis dal meccanismo già esistente per i capitani.
+- **Live match, FASE B (v1.29.0)**: la diretta vera e propria. Dal
+  pannello admin il gestore nomina il cronista, dà il fischio d'inizio
+  (`stato_live` → in_corso) e quello finale (→ conclusa), attiva la
+  condivisione pubblica (genera un `codice_live` casuale al primo
+  attivamento) e può aggiustare la formazione fino all'ultimo
+  (aggiungere un giocatore, spostarlo di squadra, rimuoverlo — le
+  formazioni cambiano spesso al campo). Il cronista, sulla pagina della
+  partita, ha un nuovo SubTab "🔴 Live" con bottoni +1/-1 per gol,
+  assist, cartellini e autogol per OGNI giocatore di ENTRAMBE le
+  squadre (non solo la propria, a differenza del capitano) — ogni tap
+  salva subito su `dati_manuali`. Il punteggio mostrato in testa alla
+  pagina, mentre la partita è live, è calcolato sommando quei gol
+  (`calcolaPunteggioLive`, nuova funzione pura in `lib/engine.js`, un
+  autogol conta per la squadra avversaria) invece di leggere
+  `gol_squadra_1/2`, che restano null finché non c'è un risultato
+  ufficiale. Banner "🔴 IN DIRETTA" per chiunque guardi la partita
+  mentre è in corso.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 

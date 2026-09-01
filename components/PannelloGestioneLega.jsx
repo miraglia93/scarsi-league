@@ -50,6 +50,13 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const [capitani, setCapitani] = useState({}); // squadra -> email
   const [capitaniBusy, setCapitaniBusy] = useState(false);
 
+  // ---------- live match (per la partita selezionata sopra) ----------
+  const [cronistaEmail, setCronistaEmail] = useState("");
+  const [liveBusy, setLiveBusy] = useState(false);
+  const [liveMsg, setLiveMsg] = useState("");
+  const [nuovaFormazioneGiocatoreId, setNuovaFormazioneGiocatoreId] = useState("");
+  const [nuovaFormazioneSquadra, setNuovaFormazioneSquadra] = useState("");
+
   // ---------- proposte incrociate dei capitani, in attesa di approvazione ----------
   const [proposte, setProposte] = useState([]);
   const [proposteBusyId, setProposteBusyId] = useState(null);
@@ -186,13 +193,15 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   }, [legaCorrente?.id]);
 
   useEffect(() => {
-    if (!partitaSelId) { setDatiRighe([]); setCapitani({}); return; }
+    if (!partitaSelId) { setDatiRighe([]); setCapitani({}); setCronistaEmail(""); return; }
     (async () => {
-      const [{ data: pr }, { data: dm }, { data: cap }] = await Promise.all([
+      const [{ data: pr }, { data: dm }, { data: cap }, { data: cron }] = await Promise.all([
         supabase.from("prestazioni").select("*").eq("partita_id", partitaSelId),
         supabase.from("dati_manuali").select("*").eq("partita_id", partitaSelId),
         supabase.from("capitani_partita").select("*").eq("partita_id", partitaSelId),
+        supabase.from("cronisti_partita").select("*").eq("partita_id", partitaSelId),
       ]);
+      setCronistaEmail((cron || [])[0]?.email || "");
       const dmByGiocatore = {};
       (dm || []).forEach((d) => { dmByGiocatore[d.giocatore_id] = d; });
       const righe = (pr || []).map((p) => {
@@ -531,6 +540,78 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     if (p) inviaPush({ tipo: "capitano_assegnato", email, squadra, partita_id: p.id, label: `${p.data} · ${p.squadra_1}-${p.squadra_2}` });
   };
 
+  const salvaCronista = async (email) => {
+    setLiveBusy(true); setLiveMsg("");
+    if (!email) {
+      const { error } = await supabase.from("cronisti_partita").delete().eq("partita_id", Number(partitaSelId));
+      setLiveBusy(false);
+      if (error) { setLiveMsg("⚠ " + tradErroreDb(error.message)); return; }
+      setCronistaEmail("");
+      return;
+    }
+    const { error } = await supabase.from("cronisti_partita")
+      .upsert({ partita_id: Number(partitaSelId), email }, { onConflict: "partita_id,email" });
+    setLiveBusy(false);
+    if (error) { setLiveMsg("⚠ " + tradErroreDb(error.message)); return; }
+    setCronistaEmail(email);
+  };
+
+  const impostaStatoLive = async (nuovoStato) => {
+    setLiveBusy(true); setLiveMsg("");
+    const { error } = await supabase.from("partite").update({ stato_live: nuovoStato }).eq("id", Number(partitaSelId));
+    setLiveBusy(false);
+    setLiveMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Fatto");
+    carica();
+  };
+
+  const toggleCondivisionePubblica = async (attiva, codiceEsistente) => {
+    setLiveBusy(true); setLiveMsg("");
+    const payload = { condivisione_pubblica: attiva };
+    if (attiva && !codiceEsistente) payload.codice_live = crypto.randomUUID().slice(0, 8);
+    const { error } = await supabase.from("partite").update(payload).eq("id", Number(partitaSelId));
+    setLiveBusy(false);
+    setLiveMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Fatto");
+    carica();
+  };
+
+  const aggiungiAllaFormazione = async () => {
+    if (!nuovaFormazioneGiocatoreId || !nuovaFormazioneSquadra) return;
+    setLiveBusy(true); setLiveMsg("");
+    const g = giocatori.find((x) => x.id === Number(nuovaFormazioneGiocatoreId));
+    const ruolo = g?.ruolo_prevalente || "CEN";
+    const { error } = await supabase.from("prestazioni").insert({
+      partita_id: Number(partitaSelId), giocatore_id: Number(nuovaFormazioneGiocatoreId),
+      squadra: nuovaFormazioneSquadra, ruolo, voto: null, gol: 0,
+    });
+    setLiveBusy(false);
+    if (error) { setLiveMsg("⚠ " + tradErroreDb(error.message)); return; }
+    setLiveMsg("✅ Aggiunto alla formazione");
+    setDatiRighe((righe) => [...righe, {
+      giocatore_id: g.id, squadra: nuovaFormazioneSquadra, nome: g?.nickname || g?.nome || "Giocatore",
+      ruolo, gol_manuale: "", assist: 0, clean_sheet: false, gol_subiti: "", cartellini: 0, autogol: 0, note: "",
+    }].sort((a, b) => a.squadra.localeCompare(b.squadra) || a.nome.localeCompare(b.nome)));
+    setNuovaFormazioneGiocatoreId(""); setNuovaFormazioneSquadra("");
+  };
+
+  const spostaGiocatoreFormazione = async (giocatoreId, nuovaSquadra) => {
+    setLiveBusy(true); setLiveMsg("");
+    const { error } = await supabase.from("prestazioni").update({ squadra: nuovaSquadra })
+      .eq("partita_id", Number(partitaSelId)).eq("giocatore_id", giocatoreId);
+    setLiveBusy(false);
+    if (error) { setLiveMsg("⚠ " + tradErroreDb(error.message)); return; }
+    setDatiRighe((righe) => righe.map((r) => (r.giocatore_id === giocatoreId ? { ...r, squadra: nuovaSquadra } : r)));
+  };
+
+  const rimuoviDallaFormazione = async (giocatoreId) => {
+    if (!confirm("Togliere questo giocatore dalla formazione?")) return;
+    setLiveBusy(true); setLiveMsg("");
+    const { error } = await supabase.from("prestazioni").delete()
+      .eq("partita_id", Number(partitaSelId)).eq("giocatore_id", giocatoreId);
+    setLiveBusy(false);
+    if (error) { setLiveMsg("⚠ " + tradErroreDb(error.message)); return; }
+    setDatiRighe((righe) => righe.filter((r) => r.giocatore_id !== giocatoreId));
+  };
+
   const datoOrgDi = (giocatoreId) => datiOrg.find((d) => d.giocatore_id === giocatoreId) || {};
 
   const salvaDatoOrg = async (giocatoreId, campo, valore) => {
@@ -783,6 +864,9 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const gestite = richieste.filter((r) => r.stato !== "in_attesa");
 
   const partitaLabel = (p) => `${p.data} · ${p.squadra_1} ${p.gol_squadra_1}-${p.gol_squadra_2} ${p.squadra_2}`;
+  const partitaSel = partitaSelId ? partite.find((p) => p.id === Number(partitaSelId)) : null;
+  const giaInFormazione = new Set(datiRighe.map((r) => r.giocatore_id));
+  const giocatoriDisponibiliFormazione = giocatori.filter((g) => !giaInFormazione.has(g.id));
   const partiteCountByStagione = {};
   partite.forEach((p) => { if (p.stagione_id) partiteCountByStagione[p.stagione_id] = (partiteCountByStagione[p.stagione_id] || 0) + 1; });
   const filtroStagioneAttivo = filtroStagionePartite || "";
@@ -1019,6 +1103,60 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
             {partite.map((p) => <option key={p.id} value={p.id}>{partitaLabel(p)}</option>)}
           </select>
 
+          {partitaSelId && partitaSel?.stato_live && (
+            <>
+              <h3 style={{ marginTop: 16 }}>Live match</h3>
+              <p className="season">
+                Stato: {partitaSel.stato_live === "programmata" ? "⏳ programmata"
+                  : partitaSel.stato_live === "in_corso" ? "🔴 in corso" : "✅ conclusa"}
+              </p>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                {partitaSel.stato_live === "programmata" && (
+                  <button className="mini ok" disabled={liveBusy} onClick={() => impostaStatoLive("in_corso")}>▶️ Fischio d'inizio</button>
+                )}
+                {partitaSel.stato_live === "in_corso" && (
+                  <button className="mini no" disabled={liveBusy} onClick={() => impostaStatoLive("conclusa")}>⏹ Fischio finale</button>
+                )}
+                <label className="flabel" style={{ margin: 0 }}>Cronista</label>
+                <select value={cronistaEmail} disabled={liveBusy} onChange={(e) => salvaCronista(e.target.value)}>
+                  <option value="">— nessuno —</option>
+                  {membri.map((m) => <option key={m.email} value={m.email}>{m.nome || m.email}</option>)}
+                </select>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input type="checkbox" checked={partitaSel.condivisione_pubblica} disabled={liveBusy}
+                    onChange={(e) => toggleCondivisionePubblica(e.target.checked, partitaSel.codice_live)} />
+                  Condividi pubblicamente (chiunque abbia il link può seguire la diretta, senza login)
+                </label>
+                {partitaSel.condivisione_pubblica && partitaSel.codice_live && (
+                  <p className="season" style={{ marginTop: 6 }}>
+                    Link: <code>scarsileague.it/live/{partitaSel.codice_live}</code>
+                  </p>
+                )}
+              </div>
+
+              <h3 style={{ marginTop: 16 }}>Formazione</h3>
+              <p className="season">Aggiusta chi gioca in quale squadra — cambia spesso al campo.</p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+                <select value={nuovaFormazioneGiocatoreId} onChange={(e) => setNuovaFormazioneGiocatoreId(e.target.value)}>
+                  <option value="">— Scegli un giocatore da aggiungere —</option>
+                  {giocatoriDisponibiliFormazione.map((g) => (
+                    <option key={g.id} value={g.id}>{g.nickname || g.nome}</option>
+                  ))}
+                </select>
+                <select value={nuovaFormazioneSquadra} onChange={(e) => setNuovaFormazioneSquadra(e.target.value)}>
+                  <option value="">— squadra —</option>
+                  <option value={partitaSel.squadra_1}>{partitaSel.squadra_1}</option>
+                  <option value={partitaSel.squadra_2}>{partitaSel.squadra_2}</option>
+                </select>
+                <button className="mini ok" disabled={liveBusy || !nuovaFormazioneGiocatoreId || !nuovaFormazioneSquadra}
+                  onClick={aggiungiAllaFormazione}>+ Aggiungi</button>
+              </div>
+              {liveMsg && <div className="note">{liveMsg}</div>}
+            </>
+          )}
+
           {partitaSelId && (
             datiRighe.length === 0 ? (
               <p className="season">Nessun partecipante trovato per questa partita.</p>
@@ -1056,12 +1194,20 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                     <thead><tr>
                       <th>Giocatore</th><th>Squadra</th><th>Ruolo</th><th className="num">Gol</th><th className="num">Assist</th><th className="num">Clean sheet</th>
                       <th className="num">Gol subiti</th><th className="num">Cartellini</th><th className="num">Autogol</th><th>Note</th>
+                      {partitaSel?.stato_live && <th></th>}
                     </tr></thead>
                     <tbody>
                       {datiRighe.map((r) => (
                         <tr key={r.giocatore_id}>
                           <td className="pname">{r.nome}</td>
-                          <td>{r.squadra}</td>
+                          <td>
+                            {partitaSel?.stato_live ? (
+                              <select value={r.squadra} onChange={(e) => spostaGiocatoreFormazione(r.giocatore_id, e.target.value)}>
+                                <option value={partitaSel.squadra_1}>{partitaSel.squadra_1}</option>
+                                <option value={partitaSel.squadra_2}>{partitaSel.squadra_2}</option>
+                              </select>
+                            ) : r.squadra}
+                          </td>
                           <td>{r.ruolo}</td>
                           <td className="num">
                             <input type="number" min="0" style={{ width: 56 }} value={r.gol_manuale}
@@ -1094,6 +1240,9 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                             <input type="text" value={r.note}
                               onChange={(e) => aggiornaRiga(r.giocatore_id, "note", e.target.value)} />
                           </td>
+                          {partitaSel?.stato_live && (
+                            <td><button className="mini no" onClick={() => rimuoviDallaFormazione(r.giocatore_id)}>Rimuovi</button></td>
+                          )}
                         </tr>
                       ))}
                     </tbody>

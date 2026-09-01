@@ -1,7 +1,7 @@
 import { test, assert, assertEqual, assertVicino, riepilogo } from "./_assert.mjs";
 import {
   assemble, buildStats, computeXP, computeLivello, computeBadges, buildTOTW, tradErroreDb, cardStats,
-  applicaNomiRegistrati, applicaGolManuali, applicaVotoArricchito,
+  applicaNomiRegistrati, applicaGolManuali, applicaVotoArricchito, calcolaPunteggioLive,
 } from "../lib/engine.js";
 
 /* dataset sintetico: 4 giocatori, 2 partite, coerente con le forme delle
@@ -214,6 +214,32 @@ test("applicaVotoArricchito: nessun voto capitano e nessuna esclusione lascia il
   const prestazioni = [{ partita_id: 201, giocatore_id: 1, voto: 6 }];
   const votiRicevuti = [{ partita_id: 201, valutato_id: 1, votante_id: 9, voto: 8, anomalo: false }];
   assertEqual(applicaVotoArricchito(prestazioni, votiRicevuti, [], partiteVoto, stagioniVoto), prestazioni);
+});
+
+test("calcolaPunteggioLive: somma i gol_manuale per squadra, un autogol conta per l'avversaria", () => {
+  const prestazioniLive = [
+    { giocatore_id: 1, squadra: "Bianchi" },
+    { giocatore_id: 2, squadra: "Bianchi" },
+    { giocatore_id: 3, squadra: "Neri" },
+  ];
+  const datiManuali = [
+    { giocatore_id: 1, gol_manuale: 2 },
+    { giocatore_id: 2, gol_manuale: 1, autogol: 1 }, // 1 gol per i Bianchi, 1 autogol -> punto ai Neri
+    { giocatore_id: 3, gol_manuale: 0 },
+  ];
+  const punteggio = calcolaPunteggioLive(prestazioniLive, datiManuali);
+  assertEqual(punteggio.Bianchi, 3);
+  assertEqual(punteggio.Neri, 1);
+});
+
+test("calcolaPunteggioLive: nessun dato manuale -> 0 a 0", () => {
+  const prestazioniLive = [
+    { giocatore_id: 1, squadra: "Bianchi" },
+    { giocatore_id: 2, squadra: "Neri" },
+  ];
+  const punteggio = calcolaPunteggioLive(prestazioniLive, []);
+  assertEqual(punteggio.Bianchi, 0);
+  assertEqual(punteggio.Neri, 0);
 });
 
 export const ok = riepilogo("engine.test.mjs");
