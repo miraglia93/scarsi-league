@@ -379,11 +379,18 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const confermaImportRapido = async () => {
     if (!importRapidoPreview) return;
     setImportRapidoBusy(true); setImportRapidoMsg("");
-    const { partita, giocatoriNuovi, prestazioni, voti } = importRapidoPreview;
+    const { partita, giocatoriNuovi, prestazioni, voti, partitaEsistenteId } = importRapidoPreview;
     try {
-      const { data: partitaInserita, error: errP } = await supabase.from("partite").insert(partita).select("id").single();
-      if (errP) throw errP;
-      const partitaId = partitaInserita.id;
+      let partitaId;
+      if (partitaEsistenteId) {
+        const { error: errP } = await supabase.from("partite").update(partita).eq("id", partitaEsistenteId);
+        if (errP) throw errP;
+        partitaId = partitaEsistenteId;
+      } else {
+        const { data: partitaInserita, error: errP } = await supabase.from("partite").insert(partita).select("id").single();
+        if (errP) throw errP;
+        partitaId = partitaInserita.id;
+      }
 
       const nomeAId = {};
       giocatori.forEach((g) => { nomeAId[g.nome.trim().toLowerCase()] = g.id; });

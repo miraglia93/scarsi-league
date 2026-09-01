@@ -182,6 +182,18 @@ test("parseImportRapido: blocca se il match_id è già stato importato in questa
   assertEqual(r2.partita, null);
 });
 
+test("parseImportRapido: una partita live (stato_live impostato) viene aggiornata invece di essere bloccata", () => {
+  const r2 = parseImportRapido(datiRapido, {
+    legaId: 1,
+    partiteEsistenti: [{ id: 99, match_id: "3149177", stato_live: "in_corso" }],
+    giocatoriEsistenti: [],
+  });
+  assertEqual(r2.errori, []);
+  assertEqual(r2.partitaEsistenteId, 99);
+  assertEqual(r2.partita.stato_live, "conclusa");
+  assertEqual(r2.partita.gol_squadra_1, 5);
+});
+
 test("parseImportRapido: identifica i giocatori per nome, non per id Fubles", () => {
   const r2 = parseImportRapido(datiRapido, {
     legaId: 1, partiteEsistenti: [],
