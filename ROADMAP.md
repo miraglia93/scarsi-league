@@ -203,7 +203,17 @@ aperta, il resto è nel parcheggio sotto.
   autogol conta per la squadra avversaria) invece di leggere
   `gol_squadra_1/2`, che restano null finché non c'è un risultato
   ufficiale. Banner "🔴 IN DIRETTA" per chiunque guardi la partita
-  mentre è in corso.
+  mentre è in corso. Verificato dal vivo end-to-end su una partita di
+  test: cronista che segna un gol e un autogol durante la diretta,
+  fischio finale, poi il normale import Fubles post-partita (bookmarklet
+  invariato) sullo stesso `match_id` — trovato e corretto un bug reale
+  nel percorso di FASE A, dove il commento nel codice prometteva che
+  l'import post-partita potesse chiudere un live match ma il controllo
+  anti-duplicati lo bloccava sempre; ora, se la partita esistente ha
+  `stato_live` impostato, l'import la aggiorna (marcandola "conclusa")
+  invece di rifiutarsi. Confermato che il punteggio resta quello del
+  cronista anche dopo l'arrivo del risultato Fubles, e che i voti
+  arrivano correttamente da Fubles.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 
