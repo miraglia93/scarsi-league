@@ -870,7 +870,12 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const inAttesa = richieste.filter((r) => r.stato === "in_attesa");
   const gestite = richieste.filter((r) => r.stato !== "in_attesa");
 
-  const partitaLabel = (p) => `${p.data} · ${p.squadra_1} ${p.stato_live === "in_corso" ? "🔴" : p.stato_live === "programmata" ? "⏳" : `${p.gol_squadra_1}-${p.gol_squadra_2}`} ${p.squadra_2}`;
+  const partitaLabel = (p) => `${p.data} · ${p.squadra_1} ${
+    p.stato_live === "in_corso" ? "🔴"
+      : p.stato_live === "programmata" ? "⏳"
+      : p.stato_live === "conclusa" && p.gol_squadra_1 == null ? "✅"
+      : `${p.gol_squadra_1}-${p.gol_squadra_2}`
+  } ${p.squadra_2}`;
   const partitaSel = partitaSelId ? partite.find((p) => p.id === Number(partitaSelId)) : null;
   const giaInFormazione = new Set(datiRighe.map((r) => r.giocatore_id));
   const giocatoriDisponibiliFormazione = giocatori.filter((g) => !giaInFormazione.has(g.id));
@@ -1069,6 +1074,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                     <td className="num">
                       {p.stato_live === "in_corso" ? "🔴 in corso"
                         : p.stato_live === "programmata" ? "⏳ programmata"
+                        : p.stato_live === "conclusa" && p.gol_squadra_1 == null ? "✅ conclusa (in attesa import)"
                         : `${p.gol_squadra_1}-${p.gol_squadra_2}`}
                     </td>
                     <td>
