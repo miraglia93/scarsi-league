@@ -5,9 +5,10 @@ import { supabase } from "../lib/supabaseClient";
 import { tradErroreDb } from "../lib/engine";
 import {
   parseImportFubles, calcolaAnteprimaImport, partiteDaInserire as calcolaPartiteDaInserire,
-  trovaGiocatoriNuovi, costruisciPrestazioni, costruisciVoti, parseImportRapido,
+  trovaGiocatoriNuovi, costruisciPrestazioni, costruisciVoti, parseImportRapido, parseImportPreMatch,
 } from "../lib/importFubles";
 import { bookmarkletHref } from "../lib/bookmarklet";
+import { bookmarkletPreMatchHref } from "../lib/bookmarkletPreMatch";
 import { inviaPush } from "../lib/push";
 import SubTabs from "./SubTabs";
 
@@ -107,6 +108,12 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const [importRapidoPreview, setImportRapidoPreview] = useState(null);
   const [importRapidoMsg, setImportRapidoMsg] = useState("");
   const [importRapidoBusy, setImportRapidoBusy] = useState(false);
+
+  // ---------- import pre-partita (bookmarklet, formazione senza risultato) ----------
+  const [importPreMatchText, setImportPreMatchText] = useState("");
+  const [importPreMatchPreview, setImportPreMatchPreview] = useState(null);
+  const [importPreMatchMsg, setImportPreMatchMsg] = useState("");
+  const [importPreMatchBusy, setImportPreMatchBusy] = useState(false);
 
   const carica = async () => {
     if (legaId == null) return;
@@ -416,6 +423,71 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
       setImportRapidoMsg("⚠ " + tradErroreDb(error.message));
     }
     setImportRapidoBusy(false);
+  };
+
+  // ---------- import pre-partita (bookmarklet, formazione senza risultato) ----------
+  const analizzaImportPreMatch = () => {
+    setImportPreMatchMsg("");
+    let dati;
+    try {
+      dati = JSON.parse(importPreMatchText);
+    } catch {
+      setImportPreMatchPreview(null);
+      setImportPreMatchMsg("⚠ Il testo incollato non è JSON valido — assicurati di aver incollato esattamente quello che il bottone ha copiato.");
+      return;
+    }
+    const risultato = parseImportPreMatch(dati, { legaId, partiteEsistenti: partite, giocatoriEsistenti: giocatori });
+    if (risultato.errori.length) {
+      setImportPreMatchPreview(null);
+      setImportPreMatchMsg("⚠ " + risultato.errori.join(" · "));
+      return;
+    }
+    setImportPreMatchPreview(risultato);
+  };
+
+  const confermaImportPreMatch = async () => {
+    if (!importPreMatchPreview) return;
+    setImportPreMatchBusy(true); setImportPreMatchMsg("");
+    const { partita, giocatoriNuovi, prestazioni } = importPreMatchPreview;
+    try {
+      const { data: partitaInserita, error: errP } = await supabase.from("partite").insert(partita).select("id").single();
+      if (errP) throw errP;
+      const partitaId = partitaInserita.id;
+
+      const nomeAId = {};
+      giocatori.forEach((g) => { nomeAId[g.nome.trim().toLowerCase()] = g.id; });
+      if (giocatoriNuovi.length) {
+        const { data: creati, error: errG } = await supabase.from("giocatori").insert(
+          giocatoriNuovi.map((g) => ({ nome: g.nome, lega_id: legaId, ruolo_prevalente: g.ruolo_prevalente })),
+        ).select("id, nome");
+        if (errG) throw errG;
+        (creati || []).forEach((g) => { nomeAId[g.nome.trim().toLowerCase()] = g.id; });
+      }
+
+      const prestazioniRighe = prestazioni
+        .map((p) => ({
+          partita_id: partitaId, giocatore_id: nomeAId[p.nome.trim().toLowerCase()],
+          squadra: p.squadra, ruolo: p.ruolo, voto: p.voto, gol: p.gol, motm: p.motm,
+        }))
+        .filter((p) => p.giocatore_id);
+      if (prestazioniRighe.length) {
+        const { error: errPr } = await supabase.from("prestazioni").upsert(prestazioniRighe, { onConflict: "partita_id,giocatore_id" });
+        if (errPr) throw errPr;
+      }
+
+      await supabase.from("import_log").insert({
+        fonte: "admin-ui-import-pre-match",
+        errori: `Import pre-partita (bookmarklet): 1 partita programmata, ${giocatoriNuovi.length} giocatori nuovi, ${prestazioniRighe.length} in formazione.`,
+      });
+
+      setImportPreMatchMsg(`✅ Formazione importata: ${giocatoriNuovi.length} giocatori nuovi, ${prestazioniRighe.length} in formazione. Ora puoi nominare un cronista da "Dati & capitani".`);
+      setImportPreMatchPreview(null);
+      setImportPreMatchText("");
+      carica();
+    } catch (error) {
+      setImportPreMatchMsg("⚠ " + tradErroreDb(error.message));
+    }
+    setImportPreMatchBusy(false);
   };
 
   const aggiornaRiga = (giocatoreId, campo, valore) => {
@@ -819,6 +891,42 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                   )}
                 </div>
               )}
+
+              <h2 style={{ marginTop: 32 }}>Importa formazione pre-partita — per il live match</h2>
+              <p className="season">
+                Da usare PRIMA che la partita sia giocata: porta squadre e formazione da Fubles
+                (tab "FORMAZIONI") senza risultato, per poter nominare un cronista e seguirla in
+                diretta. L&apos;import completo di sempre (con voti e gol) resterà comunque
+                disponibile a fine partita, sullo stesso bottone di importazione principale.
+              </p>
+              <p>
+                <a className="mini" href={bookmarkletPreMatchHref()} onClick={(e) => e.preventDefault()}
+                  draggable="true">📥 Importa formazione pre-partita</a>
+                <span className="season" style={{ marginLeft: 8 }}>← trascina questo nei preferiti</span>
+              </p>
+              <div className="betaform">
+                <label className="flabel">Incolla qui il testo copiato dal bottone</label>
+                <textarea rows={4} style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+                  value={importPreMatchText} onChange={(e) => { setImportPreMatchText(e.target.value); setImportPreMatchPreview(null); }} />
+                <button className="mini" style={{ marginTop: 10 }} onClick={analizzaImportPreMatch} disabled={!importPreMatchText}>Analizza</button>
+                {importPreMatchMsg && <div className="note">{importPreMatchMsg}</div>}
+                {importPreMatchPreview && (
+                  <>
+                    <div className="note">
+                      {importPreMatchPreview.partita.squadra_1} vs {importPreMatchPreview.partita.squadra_2}
+                      {" · "}{importPreMatchPreview.partita.data}
+                      {" · "}{importPreMatchPreview.giocatoriNuovi.length} giocatori nuovi (per nome — verifica che non siano già in lista con un nome scritto diverso)
+                      {" · "}{importPreMatchPreview.prestazioni.length} in formazione
+                    </div>
+                    {importPreMatchPreview.avvisi.map((a, i) => (
+                      <div key={i} className="note">⚠ {a}</div>
+                    ))}
+                    <button className="mini ok" onClick={confermaImportPreMatch} disabled={importPreMatchBusy}>
+                      {importPreMatchBusy ? "Importazione…" : "✓ Conferma import"}
+                    </button>
+                  </>
+                )}
+              </div>
             </>
           )}
 
@@ -867,7 +975,11 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                   <tr key={p.id}>
                     <td>{p.data}</td>
                     <td className="pname">{p.squadra_1} – {p.squadra_2}</td>
-                    <td className="num">{p.gol_squadra_1}-{p.gol_squadra_2}</td>
+                    <td className="num">
+                      {p.stato_live === "in_corso" ? "🔴 in corso"
+                        : p.stato_live === "programmata" ? "⏳ programmata"
+                        : `${p.gol_squadra_1}-${p.gol_squadra_2}`}
+                    </td>
                     <td>
                       <select value={p.stagione_id ?? ""} disabled={spostaBusy === p.id}
                         onChange={(e) => spostaPartita(p.id, e.target.value)}>

@@ -173,6 +173,20 @@ aperta, il resto è nel parcheggio sotto.
   (suggerita) o un voto singolo, entrambe reversibili ("Ripristina").
   Nessuna nuova migrazione: usa la RLS di moderazione e il ricalcolo
   già introdotti in FASE A/B.
+- **Live match, FASE A (v1.28.0)**: primo pezzo di un piano a tre fasi
+  per seguire una partita in tempo reale invece che a giochi fatti.
+  Verificato dal vivo che Fubles espone, PRIMA che la partita sia
+  giocata, una tab "FORMAZIONI" con squadre/forza/giocatori (niente
+  voti/gol, che non esistono ancora) — nuovo bookmarklet "Importa
+  formazione pre-partita" che la legge, stesso `match_id` che si
+  userà per l'import completo di sempre a fine partita. Nuova colonna
+  `partite.stato_live` (programmata/in_corso/conclusa, null per il
+  99% delle partite normali) e ruolo "cronista" per-partita (copre
+  entrambe le squadre, a differenza del capitano) che potrà inserire
+  eventi in diretta nelle fasi successive — scrivendo in
+  `dati_manuali`, che l'import Fubles post-partita non tocca mai:
+  la priorità "live prima di Fubles, sempre rivedibile dall'admin"
+  richiesta arriva gratis dal meccanismo già esistente per i capitani.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 

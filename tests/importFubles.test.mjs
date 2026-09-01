@@ -1,7 +1,7 @@
 import { test, assert, assertEqual, riepilogo } from "./_assert.mjs";
 import {
   parseImportFubles, calcolaAnteprimaImport, partiteDaInserire,
-  trovaGiocatoriNuovi, costruisciPrestazioni, costruisciVoti, parseImportRapido,
+  trovaGiocatoriNuovi, costruisciPrestazioni, costruisciVoti, parseImportRapido, parseImportPreMatch,
 } from "../lib/importFubles.js";
 
 console.log("importFubles.js");
@@ -208,6 +208,47 @@ test("parseImportRapido: scarta un voto il cui votante non ha giocato la partita
   assertEqual(r2.voti.length, 1);
   assertEqual(r2.voti[0].votante_nome, "Mauro Merlotti");
   assert(r2.avvisi.some((a) => a.includes("1 voto")), "deve avvisare del voto scartato");
+});
+
+const datiPreMatch = {
+  match_id: "3152683",
+  fubles_url: "https://app.fubles.com/it/app/matches/3152683",
+  data: "2026-09-08",
+  ora: "19:00",
+  squadra_1: "Bianchi",
+  squadra_2: "Neri",
+  forza_squadra_1: 74,
+  forza_squadra_2: 65,
+  giocatori: [
+    { nome: "Fabio Parlato", ruolo: "Difensore", squadra: "Bianchi" },
+    { nome: "Mauro Merlotti", ruolo: "Portiere", squadra: "Neri" },
+  ],
+};
+
+test("parseImportPreMatch: nessun errore, gol_squadra_1/2 sono null (nessun risultato ancora)", () => {
+  const r = parseImportPreMatch(datiPreMatch, { legaId: 1, partiteEsistenti: [], giocatoriEsistenti: [] });
+  assertEqual(r.errori, []);
+  assertEqual(r.partita.match_id, "3152683");
+  assertEqual(r.partita.gol_squadra_1, null);
+  assertEqual(r.partita.gol_squadra_2, null);
+  assertEqual(r.partita.stato_live, "programmata");
+  assertEqual(r.partita.forza_squadra_1, 74);
+});
+
+test("parseImportPreMatch: le prestazioni non hanno voto né gol (la partita non è ancora giocata)", () => {
+  const r = parseImportPreMatch(datiPreMatch, { legaId: 1, partiteEsistenti: [], giocatoriEsistenti: [] });
+  assertEqual(r.prestazioni.length, 2);
+  r.prestazioni.forEach((p) => {
+    assertEqual(p.voto, null);
+    assertEqual(p.gol, 0);
+    assertEqual(p.motm, false);
+  });
+});
+
+test("parseImportPreMatch: blocca se il match_id è già stato importato in questa lega", () => {
+  const r = parseImportPreMatch(datiPreMatch, { legaId: 1, partiteEsistenti: [{ match_id: "3152683" }], giocatoriEsistenti: [] });
+  assert(r.errori.length > 0, "deve segnalare un errore");
+  assertEqual(r.partita, null);
 });
 
 export const ok = riepilogo("importFubles.test.mjs");
