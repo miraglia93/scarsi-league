@@ -251,6 +251,22 @@ aperta, il resto è nel parcheggio sotto.
   `anon` (es. `elimina_lega`): falso allarme, ognuna fa il proprio
   controllo di autorizzazione interno, pattern coerente in tutto il
   progetto e non collegato a FASE C.
+- **v1.31.0 — fast-follow live match**: due dei fast-follow lasciati
+  deliberatamente fuori scope nel piano originale, richiesti esplicitamente
+  da Alessandro dopo la chiusura di FASE C. (1) **Notifiche push a inizio
+  e fine diretta**: `impostaStatoLive()` invia ora un push a tutti i
+  membri della lega (stesso destinatario di "nuova partita") quando il
+  gestore dà il fischio d'inizio o quello finale — due nuovi `tipo` in
+  `app/api/push/send/route.js` (`partita_live_iniziata`,
+  `partita_live_conclusa`), che riusano la campanella in-app già
+  esistente (stessa route scrive sia `notifiche` sia le push). (2)
+  **Più di un cronista per partita**: il DB già lo supportava dal
+  giorno uno (`cronisti_partita` ha `unique(partita_id, email)`, non un
+  limite a una riga) e `is_cronista_partita()` già funzionava
+  identicamente con 1 o N cronisti — mancava solo la UI, che assumeva
+  un cronista singolo (select + stato stringa). Ora nel pannello admin
+  è una lista di "chip" con aggiunta/rimozione libera, utile ad
+  esempio per un cronista per squadra o un backup.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 

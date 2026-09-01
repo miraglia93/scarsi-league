@@ -51,7 +51,8 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   const [capitaniBusy, setCapitaniBusy] = useState(false);
 
   // ---------- live match (per la partita selezionata sopra) ----------
-  const [cronistaEmail, setCronistaEmail] = useState("");
+  const [cronisti, setCronisti] = useState([]); // righe cronisti_partita: più di uno per partita è supportato
+  const [nuovoCronistaEmail, setNuovoCronistaEmail] = useState("");
   const [liveBusy, setLiveBusy] = useState(false);
   const [liveMsg, setLiveMsg] = useState("");
   const [nuovaFormazioneGiocatoreId, setNuovaFormazioneGiocatoreId] = useState("");
@@ -193,7 +194,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
   }, [legaCorrente?.id]);
 
   useEffect(() => {
-    if (!partitaSelId) { setDatiRighe([]); setCapitani({}); setCronistaEmail(""); return; }
+    if (!partitaSelId) { setDatiRighe([]); setCapitani({}); setCronisti([]); return; }
     (async () => {
       const [{ data: pr }, { data: dm }, { data: cap }, { data: cron }] = await Promise.all([
         supabase.from("prestazioni").select("*").eq("partita_id", partitaSelId),
@@ -201,7 +202,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
         supabase.from("capitani_partita").select("*").eq("partita_id", partitaSelId),
         supabase.from("cronisti_partita").select("*").eq("partita_id", partitaSelId),
       ]);
-      setCronistaEmail((cron || [])[0]?.email || "");
+      setCronisti(cron || []);
       const dmByGiocatore = {};
       (dm || []).forEach((d) => { dmByGiocatore[d.giocatore_id] = d; });
       const righe = (pr || []).map((p) => {
@@ -547,20 +548,24 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     if (p) inviaPush({ tipo: "capitano_assegnato", email, squadra, partita_id: p.id, label: `${p.data} · ${p.squadra_1}-${p.squadra_2}` });
   };
 
-  const salvaCronista = async (email) => {
+  const aggiungiCronista = async (email) => {
+    if (!email) return;
     setLiveBusy(true); setLiveMsg("");
-    if (!email) {
-      const { error } = await supabase.from("cronisti_partita").delete().eq("partita_id", Number(partitaSelId));
-      setLiveBusy(false);
-      if (error) { setLiveMsg("⚠ " + tradErroreDb(error.message)); return; }
-      setCronistaEmail("");
-      return;
-    }
     const { error } = await supabase.from("cronisti_partita")
       .upsert({ partita_id: Number(partitaSelId), email }, { onConflict: "partita_id,email" });
     setLiveBusy(false);
     if (error) { setLiveMsg("⚠ " + tradErroreDb(error.message)); return; }
-    setCronistaEmail(email);
+    setCronisti((c) => (c.some((x) => x.email === email) ? c : [...c, { email }]));
+    setNuovoCronistaEmail("");
+  };
+
+  const rimuoviCronista = async (email) => {
+    setLiveBusy(true); setLiveMsg("");
+    const { error } = await supabase.from("cronisti_partita")
+      .delete().eq("partita_id", Number(partitaSelId)).eq("email", email);
+    setLiveBusy(false);
+    if (error) { setLiveMsg("⚠ " + tradErroreDb(error.message)); return; }
+    setCronisti((c) => c.filter((x) => x.email !== email));
   };
 
   const impostaStatoLive = async (nuovoStato) => {
@@ -568,6 +573,15 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
     const { error } = await supabase.from("partite").update({ stato_live: nuovoStato }).eq("id", Number(partitaSelId));
     setLiveBusy(false);
     setLiveMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Fatto");
+    if (!error && (nuovoStato === "in_corso" || nuovoStato === "conclusa")) {
+      const p = partite.find((x) => x.id === Number(partitaSelId));
+      if (p) {
+        inviaPush({
+          tipo: nuovoStato === "in_corso" ? "partita_live_iniziata" : "partita_live_conclusa",
+          lega_id: legaId, partita_id: p.id, label: `${p.squadra_1} – ${p.squadra_2}`,
+        });
+      }
+    }
     carica();
   };
 
@@ -1131,11 +1145,36 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                 {partitaSel.stato_live === "in_corso" && (
                   <button className="mini no" disabled={liveBusy} onClick={() => impostaStatoLive("conclusa")}>⏹ Fischio finale</button>
                 )}
-                <label className="flabel" style={{ margin: 0 }}>Cronista</label>
-                <select value={cronistaEmail} disabled={liveBusy} onChange={(e) => salvaCronista(e.target.value)}>
-                  <option value="">— nessuno —</option>
-                  {membri.map((m) => <option key={m.email} value={m.email}>{m.nome || m.email}</option>)}
-                </select>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <label className="flabel" style={{ margin: 0 }}>Cronisti</label>
+                {cronisti.length === 0 ? (
+                  <p className="season" style={{ margin: "4px 0" }}>Nessuno assegnato</p>
+                ) : (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "6px 0" }}>
+                    {cronisti.map((c) => (
+                      <span key={c.email} style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        background: "#121B17", border: "1px solid rgba(232,237,230,.08)",
+                        borderRadius: 20, padding: "4px 6px 4px 12px", fontSize: 13,
+                      }}>
+                        {membri.find((m) => m.email === c.email)?.nome || c.email}
+                        <button type="button" className="mini no" style={{ padding: "2px 8px", borderRadius: 14 }}
+                          disabled={liveBusy} onClick={() => rimuoviCronista(c.email)}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <select value={nuovoCronistaEmail} disabled={liveBusy} onChange={(e) => setNuovoCronistaEmail(e.target.value)}>
+                    <option value="">— aggiungi cronista —</option>
+                    {membri.filter((m) => !cronisti.some((c) => c.email === m.email)).map((m) => (
+                      <option key={m.email} value={m.email}>{m.nome || m.email}</option>
+                    ))}
+                  </select>
+                  <button type="button" className="mini ok" disabled={liveBusy || !nuovoCronistaEmail}
+                    onClick={() => aggiungiCronista(nuovoCronistaEmail)}>+ Aggiungi</button>
+                </div>
               </div>
               <div style={{ marginTop: 10 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>

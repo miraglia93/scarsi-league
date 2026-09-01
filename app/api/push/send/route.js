@@ -36,7 +36,7 @@ async function emailDestinatari(tipo, body) {
   if (tipo === "richiesta_approvata") {
     return body.email ? [body.email.toLowerCase()] : [];
   }
-  if (tipo === "nuova_partita") {
+  if (tipo === "nuova_partita" || tipo === "partita_live_iniziata" || tipo === "partita_live_conclusa") {
     const { data } = await db.from("membri_autorizzati").select("email").eq("lega_id", lega_id);
     return (data || []).map((r) => r.email);
   }
@@ -85,6 +85,10 @@ async function costruisciMessaggio(tipo, body) {
       return { titolo: "Nuova proposta da approvare 📝", corpo: body.label || "Un capitano ha proposto una correzione per la tua squadra", url: body.partita_id ? `/partita/${body.partita_id}` : "/admin" };
     case "proposta_decisa":
       return { titolo: body.esito === "approvata" ? "Proposta approvata ✅" : "Proposta rifiutata ❌", corpo: body.label || "La tua proposta è stata gestita", url: body.partita_id ? `/partita/${body.partita_id}` : "/" };
+    case "partita_live_iniziata":
+      return { titolo: "🔴 Diretta iniziata!", corpo: body.label ? `${body.label} è in diretta ora` : "Una partita è in diretta ora", url: body.partita_id ? `/partita/${body.partita_id}` : "/?sezione=partite" };
+    case "partita_live_conclusa":
+      return { titolo: "✅ Diretta conclusa", corpo: body.label ? `${body.label} — la diretta è finita, risultato in arrivo` : "Una diretta è terminata", url: body.partita_id ? `/partita/${body.partita_id}` : "/?sezione=partite" };
     default:
       return null;
   }
