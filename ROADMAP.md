@@ -214,6 +214,21 @@ aperta, il resto è nel parcheggio sotto.
   invece di rifiutarsi. Confermato che il punteggio resta quello del
   cronista anche dopo l'arrivo del risultato Fubles, e che i voti
   arrivano correttamente da Fubles.
+- **Live match, FASE C (v1.30.0)**: chiude il piano a tre fasi con la
+  vista pubblica in diretta — nuova pagina `app/live/[codice]/page.jsx`,
+  raggiungibile solo con il codice generato dal gestore, senza login né
+  controlli di consenso/membro (prima superficie non autenticata
+  dell'app). Mostra punteggio live, stato ("🔴 IN DIRETTA" / "✅
+  conclusa" / "⏳ non ancora iniziata") e formazioni con marcatori,
+  assist e cartellini — niente voti né MVP, dati più personali che
+  restano riservati ai membri della lega. Sottoscrizione Supabase
+  Realtime su `prestazioni`/`dati_manuali` filtrata sulla singola
+  partita: chi guarda vede gol e cambi di formazione comparire da soli,
+  senza dover ricaricare. Nuove policy RLS `to anon` (v30.sql) — sempre
+  scoped alla singola partita con `condivisione_pubblica = true`, mai
+  all'intera lega: `partite` in lettura se condivisa, `prestazioni` e
+  `dati_manuali` via join su quella partita, `giocatori` via join sulle
+  sole prestazioni di quella partita (mai l'intera rosa).
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 
