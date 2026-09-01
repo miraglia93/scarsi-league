@@ -235,6 +235,40 @@ export default function Partita() {
 
   const reportText = buildReportText({ partita, squadre, gol, righe, mvp, media1, media2, golAttribuiti, totGol, leader });
 
+  // ri-legge prestazioni/dati_manuali dopo un tocco del cronista — tiene
+  // allineati sia il punteggio live in testa sia la lista marcatori del
+  // tab Formazioni, senza ripetere il calcolo del voto arricchito (il
+  // voto non cambia durante una diretta, nessuno vota mentre si gioca)
+  const ricaricaDatiLive = async () => {
+    const [{ data: pr }, { data: dm }] = await Promise.all([
+      supabase.from("prestazioni").select("*").eq("partita_id", id),
+      supabase.from("dati_manuali").select("*").eq("partita_id", id),
+    ]);
+    const dmMap = {};
+    (dm || []).forEach((d) => { dmMap[d.giocatore_id] = d; });
+    setPrestazioniRaw(pr || []);
+    setDatiManualiRaw(dm || []);
+    const votoAttuale = {};
+    righe.forEach((r) => { votoAttuale[r.giocatore_id] = r.voto; });
+    setRighe((pr || []).map((r) => {
+      const g = giocatoriMap[r.giocatore_id];
+      const d = dmMap[r.giocatore_id];
+      return {
+        ...r,
+        nome: g?.nome || "Giocatore",
+        nickname: g?.nickname,
+        foto_url: g?.foto_url,
+        ruolo: r.ruolo || g?.ruolo_prevalente || "—",
+        voto: votoAttuale[r.giocatore_id] ?? null,
+        gol: d?.gol_manuale != null ? d.gol_manuale : r.gol,
+        assist: d?.assist || 0,
+        clean_sheet: !!d?.clean_sheet,
+        cartellini: d?.cartellini || 0,
+        autogol: d?.autogol || 0,
+      };
+    }));
+  };
+
   return (
     <>
       <AppNav active="partite" />
@@ -369,10 +403,7 @@ export default function Partita() {
             partitaId={id}
             squadre={squadre}
             giocatori={giocatoriMap}
-            onChange={async () => {
-              const { data: dm } = await supabase.from("dati_manuali").select("*").eq("partita_id", id);
-              setDatiManualiRaw(dm || []);
-            }}
+            onChange={ricaricaDatiLive}
           />
         </>
       )}
