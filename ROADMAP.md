@@ -229,6 +229,28 @@ aperta, il resto è nel parcheggio sotto.
   all'intera lega: `partite` in lettura se condivisa, `prestazioni` e
   `dati_manuali` via join su quella partita, `giocatori` via join sulle
   sole prestazioni di quella partita (mai l'intera rosa).
+- **v1.30.1 — controllo generale post-FASE C**: richiesto esplicitamente
+  da Alessandro dopo la chiusura del piano ("hai testato tutto? per
+  sicurezza fai un controllo generale"). Rilette con occhio critico le
+  policy nuove e trovate due cose reali. (1) La pagina pubblica non
+  rispettava `giocatori.visibilita_pubblica` — colonna esistente da
+  sempre (default false, stesso principio di `leghe.pubblica`, mai
+  letta da nessuna policy prima d'ora perché nessun dato giocatore era
+  mai uscito dalla whitelist) ma senza nessuna UI per attivarla:
+  applicarla alla lettera avrebbe svuotato la pagina live per tutti.
+  Scelta con Alessandro: `v31.sql` flippa il default a `true` e fa
+  backfill (nessuno perde visibilità al lancio), la policy pubblica di
+  `giocatori` ora richiede `visibilita_pubblica = true`, e in
+  [Profilo](app/profilo/page.jsx) c'è un nuovo checkbox per disattivarla
+  esplicitamente — RLS di scrittura già esistente ("membro modifica
+  propria scheda"), nessuna nuova policy necessaria per il toggle. (2)
+  Nell'Elenco partite del pannello admin non c'era modo di vedere a
+  colpo d'occhio quali partite fossero condivise pubblicamente —
+  aggiunto un indicatore 🌐 accanto allo stato/risultato. Controllati
+  anche gli advisor di sicurezza per le funzioni RPC eseguibili da
+  `anon` (es. `elimina_lega`): falso allarme, ognuna fa il proprio
+  controllo di autorizzazione interno, pattern coerente in tutto il
+  progetto e non collegato a FASE C.
 
 ## 🔮 Dopo (parcheggiate consapevolmente)
 

@@ -18,6 +18,7 @@ export default function Profilo() {
   const [nickname, setNickname] = useState("");
   const [numero, setNumero] = useState("");
   const [ruolo, setRuolo] = useState("CEN");
+  const [visibilitaPubblica, setVisibilitaPubblica] = useState(true);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -52,6 +53,7 @@ export default function Profilo() {
       setNickname(mia?.nickname || "");
       setNumero(mia?.numero_maglia ?? "");
       setRuolo(mia?.ruolo_prevalente || "CEN");
+      setVisibilitaPubblica(mia?.visibilita_pubblica !== false);
     } else {
       setScheda(null);
     }
@@ -81,6 +83,7 @@ export default function Profilo() {
       nickname: nickname || null,
       numero_maglia: numero === "" ? null : Number(numero),
       ruolo_prevalente: ruolo,
+      visibilita_pubblica: visibilitaPubblica,
     }).eq("id", scheda.id);
     setBusy(false);
     setMsg(error ? "⚠ " + tradErroreDb(error.message) : "✅ Profilo salvato");
@@ -169,6 +172,13 @@ export default function Profilo() {
                 <button type="button" title="Centrocampista" className={ruolo === "CEN" ? "on" : ""} onClick={() => setRuolo("CEN")}>CEN</button>
                 <button type="button" title="Attaccante" className={ruolo === "ATT" ? "on" : ""} onClick={() => setRuolo("ATT")}>ATT</button>
               </span>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, cursor: "pointer" }}>
+                <input type="checkbox" checked={visibilitaPubblica} onChange={(e) => setVisibilitaPubblica(e.target.checked)} />
+                Visibile nella pagina pubblica di una partita in diretta
+              </label>
+              <p className="season" style={{ marginTop: 4 }}>
+                Se disattivi, quando un cronista condivide una partita in diretta il tuo nome e la tua foto non compariranno — resti visibile come sempre solo ai membri della lega.
+              </p>
               <button className="mini ok" style={{ marginTop: 14 }} onClick={salva} disabled={busy}>💾 Salva profilo</button>
             </div>
           </div>

@@ -1076,6 +1076,7 @@ export default function PannelloGestioneLega({ legaId, ruoloUtente }) {
                         : p.stato_live === "programmata" ? "⏳ programmata"
                         : p.stato_live === "conclusa" && p.gol_squadra_1 == null ? "✅ conclusa (in attesa import)"
                         : `${p.gol_squadra_1}-${p.gol_squadra_2}`}
+                      {p.condivisione_pubblica && <span title="Condivisa pubblicamente">{" "}🌐</span>}
                     </td>
                     <td>
                       <select value={p.stagione_id ?? ""} disabled={spostaBusy === p.id}
